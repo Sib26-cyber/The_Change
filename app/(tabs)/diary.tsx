@@ -1,18 +1,17 @@
 import { StyleSheet, Text, View } from "react-native";
 
-export default function HomeScreen() {
+export default function DiaryScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to The Change</Text>
-      <Text style={styles.subtitle}>
-        You’ve just set up your app. There are no entries yet.
-      </Text>
+      <Text style={styles.title}>Symptom Diary</Text>
+      <Text style={styles.subtitle}>You haven’t logged any entries yet.</Text>
       <Text style={styles.body}>
-        When you start logging how you feel in the Diary, this screen will show
-        a gentle overview of your recent days.
+        In the next version, this screen will let you record how you’re feeling
+        each day, including mood, symptoms, and notes.
       </Text>
       <Text style={styles.hint}>
-        Tip: Tap the “Diary” tab below to add your first entry.
+        For the prototype, we’re focusing on the flow and structure for a
+        completely new user.
       </Text>
     </View>
   );
@@ -23,7 +22,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFFDF7",
   },
   title: {
     fontSize: 22,
