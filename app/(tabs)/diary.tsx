@@ -4,13 +4,13 @@ export default function DiaryScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Symptom Diary</Text>
-      <Text style={styles.subtitle}>You haven’t logged any entries yet.</Text>
+      <Text style={styles.subtitle}>You havent logged any entries yet.</Text>
       <Text style={styles.body}>
-        In the next version, this screen will let you record how you’re feeling
-        each day, including mood, symptoms, and notes.
+        In the next version, this screen will let you record how youre feeling
+        each day, including mood, food eaten, symptoms, and notes.
       </Text>
       <Text style={styles.hint}>
-        For the prototype, we’re focusing on the flow and structure for a
+        For the prototype, were focusing on the flow and structure for a
         completely new user.
       </Text>
     </View>

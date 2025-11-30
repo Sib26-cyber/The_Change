@@ -28,7 +28,7 @@ export default function SetPinScreen() {
     // TODO (later): store PIN securely (SecureStore / AsyncStorage).
     // For prototype V1, we just validate and move into the main app.
     setError("");
-    router.replace("/(tabs)");
+    router.replace("/");
   };
 
   return (
@@ -36,7 +36,7 @@ export default function SetPinScreen() {
       <Text style={styles.title}>Set your PIN</Text>
       <Text style={styles.subtitle}>
         This PIN will be used to lock The Change on this device in a future
-        version. For now, we’re just setting it up.
+        version. For now, were just setting it up.
       </Text>
 
       <TextInput
