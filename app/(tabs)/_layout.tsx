@@ -1,15 +1,13 @@
-// app/_layout.tsx
-import { Stack } from "expo-router";
+// app/(tabs)/_layout.tsx
+import { Tabs } from "expo-router";
 
-export default function RootLayout() {
+export default function TabsLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* First screen on a completely fresh app */}
-      <Stack.Screen name="index" /> {/* Welcome */}
-      {/* First-time PIN setup */}
-      <Stack.Screen name="set-pin" /> {/* Set PIN */}
-      {/* Main app (tabs group) */}
-      <Stack.Screen name="(tabs)" /> {/* Home / Diary / Insights / Settings */}
-    </Stack>
+    <Tabs screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="diary" options={{ title: "Diary" }} />
+      <Tabs.Screen name="insights" options={{ title: "Insights" }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+    </Tabs>
   );
 }
