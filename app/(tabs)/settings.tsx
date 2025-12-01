@@ -6,11 +6,10 @@ export default function SettingsScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Settings & Privacy</Text>
       <Text style={styles.subtitle}>
-        Here you’ll manage your PIN, biometric unlock, and clear your local
-        data.
+        Here youll manage your PIN, biometric unlock, and clear your local data.
       </Text>
       <Text style={styles.body}>
-        For Version 1, we’re just showing the structure for a new user with no
+        For Version 1, were just showing the structure for a new user with no
         data yet.
       </Text>
     </View>

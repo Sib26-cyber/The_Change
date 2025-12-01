@@ -1,19 +1,28 @@
-import { StyleSheet, Text, View } from "react-native";
+// app/index.tsx
+import { useRouter } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export default function HomeScreen() {
+export default function WelcomeScreen() {
+  const router = useRouter();
+
+  const handleGetStarted = () => {
+    router.push("/set-pin");
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to The Change</Text>
+      <Text style={styles.appName}>The Change</Text>
       <Text style={styles.subtitle}>
-        You’ve just set up your app. There are no entries yet.
+        A private space to track how you feel day to day.
       </Text>
-      <Text style={styles.body}>
-        When you start logging how you feel in the Diary, this screen will show
-        a gentle overview of your recent days.
+
+      <Text style={styles.privacy}>
+        Nothing is sent to a server. Everything stays on this device.
       </Text>
-      <Text style={styles.hint}>
-        Tip: Tap the “Diary” tab below to add your first entry.
-      </Text>
+
+      <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
+        <Text style={styles.buttonText}>Set up your PIN</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -21,30 +30,36 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    padding: 32,
+    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFF7F2",
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "600",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 14,
-    textAlign: "center",
+  appName: {
+    fontSize: 32,
+    fontWeight: "700",
     marginBottom: 12,
   },
-  body: {
+  subtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  privacy: {
     fontSize: 14,
     textAlign: "center",
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  hint: {
-    fontSize: 13,
-    textAlign: "center",
     opacity: 0.8,
+    marginBottom: 32,
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    backgroundColor: "#D6765A",
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
