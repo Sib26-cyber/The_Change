@@ -11,7 +11,7 @@ export default function RootLayout() {
       <Stack.Screen name="set-pin" />
 
       {/* Main tabbed app */}
-      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="tabs" />
     </Stack>
   );
 }

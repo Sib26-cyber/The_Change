@@ -28,7 +28,7 @@ export default function SetPinScreen() {
     // TODO (later): store PIN securely (SecureStore / AsyncStorage).
     // For prototype V1, we just validate and move into the main app.
     setError("");
-    router.replace("/(tabs)");
+    router.replace("/tabs/diary"); // or '/tabs/diary' if you prefer
   };
 
   return (
