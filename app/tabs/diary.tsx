@@ -105,7 +105,7 @@ export default function DiaryScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Symptom Diary</Text>
+      <Text style={styles.title}>Journey Diary</Text>
       <Text style={styles.subtitle}>
         A gentle place to record how you feel today. Only fill in what feels
         manageable.
