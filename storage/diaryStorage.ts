@@ -1,5 +1,5 @@
-// app/storage/diaryStorage.ts
-import * as SecureStore from "expo-secure-store";
+// storage/diaryStorage.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type SymptomFlags = {
   hotFlushes: boolean;
@@ -13,18 +13,19 @@ export type CycleStatus = "none" | "spotting" | "bleeding" | "unknown";
 
 export type DiaryEntry = {
   id: string;
-  mood: number | null;      // 1–5, or null if not set
+  mood: number | null;      // 1–5
   note: string;
   symptoms: SymptomFlags;
   cycle: CycleStatus;
-  createdAt: string;        // ISO date string
+  createdAt: string;        // ISO date
 };
 
 const DIARY_KEY = "diary_entries";
 
 async function loadRawEntries(): Promise<DiaryEntry[]> {
-  const json = await SecureStore.getItemAsync(DIARY_KEY);
+  const json = await AsyncStorage.getItem(DIARY_KEY);
   if (!json) return [];
+
   try {
     const parsed = JSON.parse(json) as any[];
 
@@ -72,7 +73,9 @@ export async function getDiaryEntries(): Promise<DiaryEntry[]> {
   return loadRawEntries();
 }
 
-export async function addDiaryEntry(entry: Omit<DiaryEntry, "id">): Promise<void> {
+export async function addDiaryEntry(
+  entry: Omit<DiaryEntry, "id">
+): Promise<void> {
   const entries = await loadRawEntries();
 
   const newEntry: DiaryEntry = {
@@ -81,15 +84,15 @@ export async function addDiaryEntry(entry: Omit<DiaryEntry, "id">): Promise<void
   };
 
   const updated = [newEntry, ...entries];
-  await SecureStore.setItemAsync(DIARY_KEY, JSON.stringify(updated));
+  await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(updated));
 }
 
 export async function deleteDiaryEntry(id: string): Promise<void> {
   const entries = await loadRawEntries();
   const filtered = entries.filter((e) => e.id !== id);
-  await SecureStore.setItemAsync(DIARY_KEY, JSON.stringify(filtered));
+  await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(filtered));
 }
 
 export async function clearDiaryEntries(): Promise<void> {
-  await SecureStore.deleteItemAsync(DIARY_KEY);
+  await AsyncStorage.removeItem(DIARY_KEY);
 }

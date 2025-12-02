@@ -1,10 +1,11 @@
 // app/tabs/diary.tsx
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import {
   Alert,
   Animated,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +18,7 @@ import {
   DiaryEntry,
   getDiaryEntries,
   SymptomFlags,
-} from "../storage/diaryStorage";
+} from "../../storage/diaryStorage";
 
 const MOOD_LEVELS = [
   { value: 1, label: "Very low", emoji: "😣" },

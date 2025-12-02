@@ -1,12 +1,13 @@
 // app/tabs/insights.tsx
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+
 import {
   CycleStatus,
   DiaryEntry,
   getDiaryEntries,
   SymptomFlags,
-} from "../storage/diaryStorage";
+} from "../../storage/diaryStorage";
 
 const cycleLabel = (c: CycleStatus): string => {
   switch (c) {

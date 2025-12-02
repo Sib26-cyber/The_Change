@@ -1,6 +1,7 @@
 // app/unlock.tsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
+
 import {
   StyleSheet,
   Text,
@@ -8,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { getPin } from "./storage/securityStorage";
+import { getPin } from "../storage/securityStorage";
 
 export default function UnlockScreen() {
   const router = useRouter();

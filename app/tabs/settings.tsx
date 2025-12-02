@@ -1,17 +1,17 @@
 // app/tabs/settings.tsx
 import { useRouter } from "expo-router";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { clearAllData } from "../storage/securityStorage";
+import { clearAllData } from "../../storage/securityStorage";
 
 export default function SettingsScreen() {
   const router = useRouter();
 
-  // 🔓 Just log out: go back to Unlock, keep PIN + diary data
+  // Just log out: go back to Unlock, keep PIN + diary data
   const handleLogout = () => {
     router.replace("/unlock");
   };
 
-  // 🔁 Reset PIN only (keep diary data)
+  //  Reset PIN only (keep diary data)
   const handleResetPin = () => {
     Alert.alert(
       "Reset PIN",
@@ -29,7 +29,7 @@ export default function SettingsScreen() {
     );
   };
 
-  // 🧹 Wipe everything: PIN + diary entries
+  //  Wipe everything: PIN + diary entries
   const handleClearData = () => {
     Alert.alert(
       "Clear all data?",

@@ -1,6 +1,7 @@
 // app/set-pin.tsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
+
 import {
   StyleSheet,
   Text,
@@ -9,7 +10,7 @@ import {
   View,
 } from "react-native";
 
-import { savePin } from "./storage/securityStorage";
+import { savePin } from "../storage/securityStorage";
 
 export default function SetPinScreen() {
   const router = useRouter();
@@ -29,11 +30,11 @@ export default function SetPinScreen() {
     }
 
     try {
-      // 🔐 save PIN securely
+      //  save PIN securely
       await savePin(pin);
       setError("");
 
-      // ✅ after setting PIN, go straight to diary tab
+      //  after setting PIN, go straight to diary tab
       // use "/" to go back to the welcome screen from tabs
       router.replace("/tabs/diary" as any);
     } catch (e) {

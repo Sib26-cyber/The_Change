@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { getPin } from "./storage/securityStorage";
+import { getPin } from "../storage/securityStorage";
 
 export default function WelcomeScreen() {
   const router = useRouter();
