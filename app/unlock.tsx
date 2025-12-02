@@ -1,4 +1,4 @@
-// app/set-pin.tsx
+// app/unlock.tsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -8,38 +8,34 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { savePin } from "./storage/securityStorage"; // adjust path if needed
+import { getPin } from "./storage/securityStorage";
 
-export default function SetPinScreen() {
+export default function UnlockScreen() {
   const router = useRouter();
-  const [pin, setPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
+  const [enteredPin, setEnteredPin] = useState("");
   const [error, setError] = useState("");
 
-  const handleContinue = async () => {
-    if (pin.length < 4) {
-      setError("PIN should be at least 4 digits.");
-      return;
-    }
-    if (pin !== confirmPin) {
-      setError("PINs do not match.");
+  const handleUnlock = async () => {
+    const storedPin = await getPin();
+
+    if (!storedPin) {
+      setError("No PIN is set. Please set a PIN first.");
       return;
     }
 
-    try {
-      await savePin(pin); // 🔐 save PIN securely
+    if (enteredPin === storedPin) {
       setError("");
-      router.replace("/tabs"); // go into the app (home tab)
-    } catch (e) {
-      setError("Something went wrong saving your PIN.");
+      router.replace("/tabs");
+    } else {
+      setError("That PIN does not match. Please try again.");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Set your PIN</Text>
+      <Text style={styles.title}>Unlock The Change</Text>
       <Text style={styles.subtitle}>
-        This will be used to lock the app on this device in future versions.
+        Enter your PIN to access your diary. Everything stays on this device.
       </Text>
 
       <TextInput
@@ -47,23 +43,14 @@ export default function SetPinScreen() {
         placeholder="Enter PIN"
         keyboardType="number-pad"
         secureTextEntry
-        value={pin}
-        onChangeText={setPin}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm PIN"
-        keyboardType="number-pad"
-        secureTextEntry
-        value={confirmPin}
-        onChangeText={setConfirmPin}
+        value={enteredPin}
+        onChangeText={setEnteredPin}
       />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleContinue}>
-        <Text style={styles.buttonText}>Continue to app</Text>
+      <TouchableOpacity style={styles.button} onPress={handleUnlock}>
+        <Text style={styles.buttonText}>Unlock</Text>
       </TouchableOpacity>
     </View>
   );

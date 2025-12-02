@@ -1,13 +1,41 @@
 // app/index.tsx
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { getPin } from "./storage/securityStorage";
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const [checkingPin, setCheckingPin] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const storedPin = await getPin();
+      if (storedPin) {
+        router.replace("/unlock");
+      } else {
+        setCheckingPin(false);
+      }
+    })();
+  }, [router]);
 
   const handleGetStarted = () => {
     router.push("/set-pin");
   };
+
+  if (checkingPin) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
