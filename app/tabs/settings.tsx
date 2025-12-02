@@ -1,16 +1,60 @@
-// app/(tabs)/settings.tsx
-import { StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { clearAllData } from "../storage/securityStorage";
 
 export default function SettingsScreen() {
+  const router = useRouter();
+
+  // Reset PIN (just redirect to the Set PIN screen)
+  const handleResetPin = () => {
+    Alert.alert("Reset PIN", "Are you sure you want to reset your PIN?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Yes",
+        style: "destructive",
+        onPress: () => {
+          router.push("/set-pin" as any);
+        },
+      },
+    ]);
+  };
+
+  // Clear ALL SecureStore data
+  const handleClearData = async () => {
+    Alert.alert(
+      "Clear All Data",
+      "This will erase your PIN and diary data permanently. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Erase",
+          style: "destructive",
+          onPress: async () => {
+            await clearAllData();
+            router.replace("/set-pin" as any);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Settings & Privacy</Text>
-      <Text style={styles.subtitle}>
-        Here youll manage your PIN, biometric unlock, and clear your local data.
-      </Text>
-      <Text style={styles.body}>
-        For Version 1, were just showing the structure for a new user with no
-        data yet.
+      <Text style={styles.header}>Settings</Text>
+
+      <TouchableOpacity style={styles.button} onPress={handleResetPin}>
+        <Text style={styles.buttonText}>Reset PIN</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, styles.dangerButton]}
+        onPress={handleClearData}
+      >
+        <Text style={styles.buttonText}>Clear Local Data</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.note}>
+        Your data never leaves this device. Clearing local data is permanent.
       </Text>
     </View>
   );
@@ -20,24 +64,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    justifyContent: "center",
-    backgroundColor: "#FFF7F2",
+    backgroundColor: "#FFFDF7",
   },
-  title: {
+  header: {
     fontSize: 22,
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: 24,
     textAlign: "center",
   },
-  subtitle: {
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 12,
-    paddingHorizontal: 16,
+  button: {
+    backgroundColor: "#D6765A",
+    paddingVertical: 14,
+    borderRadius: 20,
+    marginBottom: 16,
+    alignItems: "center",
   },
-  body: {
-    fontSize: 14,
+  dangerButton: {
+    backgroundColor: "#C0392B",
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  note: {
+    marginTop: 28,
     textAlign: "center",
+    fontSize: 12,
+    color: "#A17A70",
     paddingHorizontal: 16,
   },
 });

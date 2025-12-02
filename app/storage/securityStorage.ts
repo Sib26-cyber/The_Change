@@ -1,30 +1,20 @@
 // app/storage/securityStorage.ts
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from "expo-secure-store";
 
-const KEY_PIN = 'pin';
+const PIN_KEY = "user_pin";
+const DIARY_KEY = "diary_entries"; // used when clearing all data
 
-export async function savePin(pin: string) {
-  try {
-    await SecureStore.setItemAsync(KEY_PIN, pin);
-  } catch (error) {
-    console.warn('Failed to save PIN', error);
-  }
+export async function savePin(pin: string): Promise<void> {
+  await SecureStore.setItemAsync(PIN_KEY, pin);
 }
 
 export async function getPin(): Promise<string | null> {
-  try {
-    const value = await SecureStore.getItemAsync(KEY_PIN);
-    return value;
-  } catch (error) {
-    console.warn('Failed to read PIN', error);
-    return null;
-  }
+  return await SecureStore.getItemAsync(PIN_KEY);
 }
 
-export async function clearPin() {
-  try {
-    await SecureStore.deleteItemAsync(KEY_PIN);
-  } catch (error) {
-    console.warn('Failed to clear PIN', error);
-  }
+export async function clearAllData(): Promise<void> {
+  // delete PIN
+  await SecureStore.deleteItemAsync(PIN_KEY);
+  // delete diary entries
+  await SecureStore.deleteItemAsync(DIARY_KEY);
 }

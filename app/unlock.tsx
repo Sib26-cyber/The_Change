@@ -18,14 +18,15 @@ export default function UnlockScreen() {
   const handleUnlock = async () => {
     const storedPin = await getPin();
 
+    // --- If no PIN exists, send user to Set PIN page ---
     if (!storedPin) {
-      setError("No PIN is set. Please set a PIN first.");
+      router.replace("/set-pin");
       return;
     }
 
     if (enteredPin === storedPin) {
       setError("");
-      router.replace("/tabs/index" as any);
+      router.replace("/tabs/diary" as any);
     } else {
       setError("That PIN does not match. Please try again.");
     }
