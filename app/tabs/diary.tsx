@@ -13,11 +13,11 @@ import {
   View,
 } from "react-native";
 import {
-  addDiaryEntry,
   CycleStatus,
   DiaryEntry,
   getDiaryEntries,
   SymptomFlags,
+  upsertTodayDiaryEntry,
 } from "../../storage/diaryStorage";
 
 const MOOD_LEVELS = [
@@ -50,6 +50,57 @@ const cycleLabel = (c: CycleStatus): string => {
   }
 };
 
+// --- streak helper: compute current + best streak from entries ---
+function computeStreaks(entries: DiaryEntry[]): {
+  current: number;
+  best: number;
+} {
+  if (entries.length === 0) {
+    return { current: 0, best: 0 };
+  }
+
+  // Set of day strings "YYYY-MM-DD"
+  const daySet = new Set(
+    entries.map((e) => new Date(e.createdAt).toISOString().slice(0, 10))
+  );
+
+  // Current streak: count backwards from today
+  let current = 0;
+  let cursor = new Date();
+  while (true) {
+    const dayStr = cursor.toISOString().slice(0, 10);
+    if (daySet.has(dayStr)) {
+      current++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  // Best streak: walk sorted unique dates
+  const days = Array.from(daySet).sort(); // "YYYY-MM-DD" sorts by date
+  let best = 1;
+  let run = 1;
+
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]);
+    const curr = new Date(days[i]);
+    const diffMs = curr.getTime() - prev.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays >= 0.5 && diffDays <= 1.5) {
+      // consecutive days
+      run++;
+    } else {
+      best = Math.max(best, run);
+      run = 1;
+    }
+  }
+  best = Math.max(best, run);
+
+  return { current, best };
+}
+
 export default function DiaryScreen() {
   const router = useRouter();
 
@@ -60,12 +111,19 @@ export default function DiaryScreen() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // streaks
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+
   const happyAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const load = async () => {
       const stored = await getDiaryEntries();
       setEntries(stored);
+      const { current, best } = computeStreaks(stored);
+      setCurrentStreak(current);
+      setBestStreak(best);
       setLoading(false);
     };
     load();
@@ -111,19 +169,24 @@ export default function DiaryScreen() {
       return;
     }
 
-    const createdAt = new Date().toISOString();
-    const newEntry: Omit<DiaryEntry, "id"> = {
+    const payload = {
       mood,
       note: note.trim(),
       symptoms: { ...symptoms },
       cycle,
-      createdAt,
     };
 
-    setEntries((prev) => [{ ...newEntry, id: Date.now().toString() }, ...prev]);
+    // one entry per calendar day: create or update today's entry
+    await upsertTodayDiaryEntry(payload);
+
+    // reload from storage so entries + streaks are accurate
+    const updated = await getDiaryEntries();
+    setEntries(updated);
+    const { current, best } = computeStreaks(updated);
+    setCurrentStreak(current);
+    setBestStreak(best);
 
     resetForm();
-    await addDiaryEntry(newEntry);
   };
 
   const currentMoodMeta =
@@ -315,6 +378,20 @@ export default function DiaryScreen() {
                 You have {entries.length} saved check-in
                 {entries.length > 1 ? "s" : ""}.
               </Text>
+              <Text style={styles.summaryText}>
+                Current streak: {currentStreak} day
+                {currentStreak === 1 ? "" : "s"} in a row
+              </Text>
+              <Text style={styles.summaryText}>
+                Best streak: {bestStreak} day
+                {bestStreak === 1 ? "" : "s"}
+              </Text>
+              {bestStreak >= 7 && (
+                <Text style={styles.summaryText}>
+                  🎉 You’ve been checking in so regularly — thank you for
+                  looking after yourself.
+                </Text>
+              )}
               {latest && (
                 <>
                   <Text style={styles.summaryText}>
@@ -326,11 +403,9 @@ export default function DiaryScreen() {
                       Last mood: {latestMoodMeta.emoji} {latestMoodMeta.label}
                     </Text>
                   )}
-                  {latest && (
-                    <Text style={styles.summaryText}>
-                      Last cycle: {cycleLabel(latest.cycle)}
-                    </Text>
-                  )}
+                  <Text style={styles.summaryText}>
+                    Last cycle: {cycleLabel(latest.cycle)}
+                  </Text>
                   {latestSymptomsList.length > 0 && (
                     <Text style={styles.summaryText}>
                       Last symptoms: {latestSymptomsList.join(", ")}

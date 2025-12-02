@@ -96,3 +96,42 @@ export async function deleteDiaryEntry(id: string): Promise<void> {
 export async function clearDiaryEntries(): Promise<void> {
   await AsyncStorage.removeItem(DIARY_KEY);
 }
+// storage/diaryStorage.ts
+// ...existing imports, types, DIARY_KEY, loadRawEntries, getDiaryEntries, addDiaryEntry, etc...
+
+// NEW: ensure only one entry per calendar day
+export async function upsertTodayDiaryEntry(
+  partial: Omit<DiaryEntry, "id" | "createdAt">
+): Promise<void> {
+  const entries = await loadRawEntries();
+
+  const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+  const existingIndex = entries.findIndex((e) => {
+    if (!e.createdAt) return false;
+    return e.createdAt.slice(0, 10) === todayStr;
+  });
+
+  if (existingIndex >= 0) {
+    // update existing entry for today
+    const existing = entries[existingIndex];
+    const updated: DiaryEntry = {
+      ...existing,
+      ...partial,
+      createdAt: existing.createdAt, // keep original date
+    };
+    entries[existingIndex] = updated;
+    await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(entries));
+  } else {
+    // create a brand new entry for today
+    const createdAt = new Date().toISOString();
+    const newEntry: DiaryEntry = {
+      id: Date.now().toString(),
+      createdAt,
+      ...partial,
+    };
+    const updatedEntries = [newEntry, ...entries];
+    await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(updatedEntries));
+  }
+}
+
