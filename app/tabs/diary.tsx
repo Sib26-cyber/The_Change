@@ -19,6 +19,9 @@ import {
   SymptomFlags,
   upsertTodayDiaryEntry,
 } from "../../storage/diaryStorage";
+import { layout } from "../../styles/layout";
+import { colors, radius, spacing } from "../../styles/theme";
+import { textStyles } from "../../styles/typography";
 
 const MOOD_LEVELS = [
   { value: 1, label: "Very low", emoji: "😣" },
@@ -478,29 +481,12 @@ function CycleToggle({ label, selected, onPress }: CycleToggleProps) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFDF7",
-    paddingTop: 32,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 8,
-  },
+  safeArea: layout.screenSafeArea,
+  container: layout.screenContainer,
+  title: textStyles.screenTitle,
+  sectionTitle: textStyles.sectionTitle,
+  section: layout.section,
+
   moodHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -629,30 +615,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   summaryCard: {
-    marginTop: 8,
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F0D8CE",
-    backgroundColor: "#FFFFFF",
+    ...layout.card,
+    marginTop: spacing.sm,
   },
   summaryTitle: {
     fontSize: 15,
     fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
+    color: colors.textMain,
   },
   summaryText: {
-    fontSize: 12,
-    color: "#5A3E36",
+    ...textStyles.smallMuted,
     marginBottom: 2,
   },
   summaryButton: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     alignSelf: "flex-start",
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#D6765A",
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
   },
   summaryButtonText: {
     fontSize: 12,
