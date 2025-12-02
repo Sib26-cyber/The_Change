@@ -9,29 +9,24 @@ export default function TabsLayout() {
         headerShown: false,
       }}
     >
-      {/* Hidden index route – exists to handle /tabs and redirect */}
       <Tabs.Screen
         name="index"
         options={{
-          href: null, // don't deep-link to it
-          tabBarButton: () => null, // don't show as a tab
+          title: "Home",
         }}
       />
-
       <Tabs.Screen
         name="diary"
         options={{
           title: "Diary",
         }}
       />
-
       <Tabs.Screen
         name="insights"
         options={{
           title: "Insights",
         }}
       />
-
       <Tabs.Screen
         name="settings"
         options={{
