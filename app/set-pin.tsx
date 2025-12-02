@@ -29,7 +29,7 @@ export default function SetPinScreen() {
     try {
       await savePin(pin); // 🔐 save PIN securely
       setError("");
-      router.replace("/tabs"); // go into the app (home tab)
+      router.replace("/tabs/index" as any); // go into the app (home tab)
     } catch (e) {
       setError("Something went wrong saving your PIN.");
     }

@@ -25,7 +25,7 @@ export default function UnlockScreen() {
 
     if (enteredPin === storedPin) {
       setError("");
-      router.replace("/tabs");
+      router.replace("/tabs/index" as any);
     } else {
       setError("That PIN does not match. Please try again.");
     }
