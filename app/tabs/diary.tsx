@@ -1,45 +1,94 @@
+// app/tabs/diary.tsx
+
 import * as SQLite from "expo-sqlite";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-// Create the animatable text component
-const AnimatableText = Animatable.createAnimatableComponent(Text);
+
+// If you want sliders for severity, you could add:
+// import Slider from "@react-native-community/slider";
 
 let db: SQLite.SQLiteDatabase;
 
-interface DiaryEntry {
+interface DiaryEntryStored {
   id: number;
   date: string;
   mood: string;
   sleep: string;
-  symptoms: string;
-  food: string;
-  drink: string;
+  periodStarted: number; // 0 or 1
+  flowIntensity: string; // "light" | "medium" | "heavy" | ""
+  cycleDay: number | null;
+  symptomsJSON: string; // JSON-encoded object
+  foodTriggersJSON: string; // JSON-encoded object
+  foodNotes: string;
+  drinkNotes: string;
   notes: string;
 }
 
-interface DiaryInputProps {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  multiline?: boolean;
-  delay?: number;
-}
+const symptomKeys = [
+  "hotFlushes",
+  "brainFog",
+  "moodSwings",
+  "fatigue",
+  "jointPain",
+] as const;
+
+type SymptomKey = (typeof symptomKeys)[number];
+
+type SymptomMap = { [K in SymptomKey]: number };
+
+const foodTriggerKeys = [
+  "alcohol",
+  "caffeine",
+  "sugar",
+  "spicy",
+  "gluten",
+] as const;
+
+type FoodTriggerKey = (typeof foodTriggerKeys)[number];
+
+type FoodTriggerMap = { [K in FoodTriggerKey]: boolean };
+
+// Default symptom map (0 for all)
+const defaultSymptoms: SymptomMap = symptomKeys.reduce((acc, key) => {
+  acc[key] = 0;
+  return acc;
+}, {} as SymptomMap);
+
+// Default food trigger map (all false)
+const defaultFoodTriggers: FoodTriggerMap = foodTriggerKeys.reduce(
+  (acc, key) => {
+    acc[key] = false;
+    return acc;
+  },
+  {} as FoodTriggerMap
+);
 
 export default function DiaryScreen() {
   const [mood, setMood] = useState("");
   const [sleep, setSleep] = useState("");
-  const [symptoms, setSymptoms] = useState("");
-  const [food, setFood] = useState("");
-  const [drink, setDrink] = useState("");
+  const [periodStarted, setPeriodStarted] = useState(false);
+  const [flowIntensity, setFlowIntensity] = useState<
+    "light" | "medium" | "heavy" | ""
+  >("");
+  const [cycleDay, setCycleDay] = useState<string>(""); // we'll parse to number
+  const [symptoms, setSymptoms] = useState<SymptomMap>({ ...defaultSymptoms });
+  const [foodTriggers, setFoodTriggers] = useState<FoodTriggerMap>({
+    ...defaultFoodTriggers,
+  });
+  const [foodNotes, setFoodNotes] = useState("");
+  const [drinkNotes, setDrinkNotes] = useState("");
   const [notes, setNotes] = useState("");
+
   const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
@@ -52,14 +101,18 @@ export default function DiaryScreen() {
           date TEXT UNIQUE,
           mood TEXT,
           sleep TEXT,
-          symptoms TEXT,
-          food TEXT,
-          drink TEXT,
+          periodStarted INTEGER,
+          flowIntensity TEXT,
+          cycleDay INTEGER,
+          symptomsJSON TEXT,
+          foodTriggersJSON TEXT,
+          foodNotes TEXT,
+          drinkNotes TEXT,
           notes TEXT
         );`
       );
 
-      const entry = await db.getFirstAsync<DiaryEntry>(
+      const entry = await db.getFirstAsync<DiaryEntryStored>(
         `SELECT * FROM diary_entries WHERE date = ?;`,
         [today]
       );
@@ -67,9 +120,15 @@ export default function DiaryScreen() {
       if (entry) {
         setMood(entry.mood);
         setSleep(entry.sleep);
-        setSymptoms(entry.symptoms);
-        setFood(entry.food);
-        setDrink(entry.drink);
+        setPeriodStarted(entry.periodStarted === 1);
+        setFlowIntensity(
+          entry.flowIntensity as "light" | "medium" | "heavy" | ""
+        );
+        setCycleDay(entry.cycleDay?.toString() ?? "");
+        setSymptoms(JSON.parse(entry.symptomsJSON));
+        setFoodTriggers(JSON.parse(entry.foodTriggersJSON));
+        setFoodNotes(entry.foodNotes);
+        setDrinkNotes(entry.drinkNotes);
         setNotes(entry.notes);
       }
     };
@@ -79,14 +138,41 @@ export default function DiaryScreen() {
 
   const saveEntry = async () => {
     try {
+      const periodInt = periodStarted ? 1 : 0;
+      const cycleDayNum = cycleDay !== "" ? parseInt(cycleDay, 10) : null;
+
       await db.runAsync(
         `INSERT OR REPLACE INTO diary_entries 
-         (date, mood, sleep, symptoms, food, drink, notes) 
-         VALUES (?, ?, ?, ?, ?, ?, ?);`,
-        [today, mood, sleep, symptoms, food, drink, notes]
+          (date, mood, sleep, periodStarted, flowIntensity, cycleDay, symptomsJSON, foodTriggersJSON, foodNotes, drinkNotes, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          today,
+          mood,
+          sleep,
+          periodInt,
+          flowIntensity,
+          cycleDayNum,
+          JSON.stringify(symptoms),
+          JSON.stringify(foodTriggers),
+          foodNotes,
+          drinkNotes,
+          notes,
+        ]
       );
 
       Alert.alert("✅ Saved", "Your diary entry has been saved locally.");
+
+      // Clear form for new day
+      setMood("");
+      setSleep("");
+      setPeriodStarted(false);
+      setFlowIntensity("");
+      setCycleDay("");
+      setSymptoms({ ...defaultSymptoms });
+      setFoodTriggers({ ...defaultFoodTriggers });
+      setFoodNotes("");
+      setDrinkNotes("");
+      setNotes("");
     } catch (error) {
       console.error("Save error:", error);
       Alert.alert("❌ Error", "Failed to save your entry.");
@@ -99,49 +185,137 @@ export default function DiaryScreen() {
         <Text style={styles.title}>🌸 Daily Diary</Text>
       </Animatable.View>
 
+      {/* Mood selector */}
       <MoodSelector selectedMood={mood} setSelectedMood={setMood} />
 
+      {/* Sleep */}
       <DiaryInput
-        label="😴 Sleep"
+        label="😴 Sleep (hrs)"
         value={sleep}
         onChangeText={setSleep}
-        delay={200}
+        delay={100}
       />
-      <DiaryInput
-        label="🔥 Symptoms"
-        value={symptoms}
-        onChangeText={setSymptoms}
-        delay={300}
-      />
-      <DiaryInput
-        label="🍽️ Food"
-        value={food}
-        onChangeText={setFood}
-        delay={400}
-      />
-      <DiaryInput
-        label="💧 Drink"
-        value={drink}
-        onChangeText={setDrink}
-        delay={500}
-      />
+
+      {/* Period / Cycle */}
+      <Animatable.View animation="fadeInUp" delay={200} style={styles.section}>
+        <Text style={styles.label}>🩸 Period today?</Text>
+        <Switch value={periodStarted} onValueChange={setPeriodStarted} />
+        {periodStarted && (
+          <>
+            <Text style={styles.label}>Flow intensity</Text>
+            <View style={styles.flowButtonsRow}>
+              {["light", "medium", "heavy"].map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={[
+                    styles.flowButton,
+                    flowIntensity === opt && styles.flowButtonSelected,
+                  ]}
+                  onPress={() =>
+                    setFlowIntensity(opt as "light" | "medium" | "heavy")
+                  }
+                >
+                  <Text style={styles.flowButtonText}>
+                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Cycle day (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 14"
+              keyboardType="numeric"
+              value={cycleDay}
+              onChangeText={setCycleDay}
+            />
+          </>
+        )}
+      </Animatable.View>
+
+      {/* Symptoms */}
+      <Animatable.View animation="fadeInUp" delay={300} style={styles.section}>
+        <Text style={styles.label}>🔥 Symptoms severity (0–3)</Text>
+        {symptomKeys.map((key) => (
+          <View key={key} style={styles.symptomRow}>
+            <Text style={styles.symptomLabel}>{key}</Text>
+            <TextInput
+              style={styles.smallInput}
+              keyboardType="numeric"
+              value={symptoms[key].toString()}
+              onChangeText={(t) => {
+                const num = parseInt(t, 10);
+                if (!isNaN(num) && num >= 0 && num <= 3) {
+                  setSymptoms({ ...symptoms, [key]: num });
+                } else if (t === "") {
+                  setSymptoms({ ...symptoms, [key]: 0 });
+                }
+              }}
+            />
+          </View>
+        ))}
+      </Animatable.View>
+
+      {/* Food triggers */}
+      <Animatable.View animation="fadeInUp" delay={400} style={styles.section}>
+        <Text style={styles.label}>🍽️ Food & Drink Triggers</Text>
+        {foodTriggerKeys.map((key) => (
+          <View key={key} style={styles.triggerRow}>
+            <Text style={styles.triggerLabel}>{key}</Text>
+            <Switch
+              value={foodTriggers[key]}
+              onValueChange={(v) =>
+                setFoodTriggers({ ...foodTriggers, [key]: v })
+              }
+            />
+          </View>
+        ))}
+
+        <Text style={styles.label}>Food notes / details</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="What did you eat?"
+          value={foodNotes}
+          onChangeText={setFoodNotes}
+        />
+
+        <Text style={styles.label}>Drink notes</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Water, wine, coffee, etc."
+          value={drinkNotes}
+          onChangeText={setDrinkNotes}
+        />
+      </Animatable.View>
+
+      {/* Free-form Notes */}
       <DiaryInput
         label="📝 Notes"
         value={notes}
         onChangeText={setNotes}
-        delay={600}
+        delay={500}
         multiline
       />
 
-      <Animatable.View animation="pulse" delay={800} iterationCount="infinite">
+      {/* Save Button */}
+      <View style={{ marginTop: 30, marginBottom: 40 }}>
         <TouchableOpacity style={styles.saveButton} onPress={saveEntry}>
           <Text style={styles.saveText}>💾 Save Entry</Text>
         </TouchableOpacity>
-      </Animatable.View>
+      </View>
     </ScrollView>
   );
 }
 
+// Reuse DiaryInput
+interface DiaryInputProps {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  multiline?: boolean;
+  delay?: number;
+}
 function DiaryInput({
   label,
   value,
@@ -163,6 +337,7 @@ function DiaryInput({
   );
 }
 
+// Mood selector from before
 const moodOptions = [
   { emoji: "😢", value: "sad" },
   { emoji: "😐", value: "neutral" },
@@ -188,26 +363,30 @@ function MoodSelector({
     >
       <Text style={styles.label}>😊 How do you feel today?</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {moodOptions.map((mood, index) => (
+        {moodOptions.map((m, index) => (
           <Animatable.Text
-            key={mood.value}
+            key={m.value}
             animation="bounceIn"
             delay={index * 80}
             style={[
               styles.moodEmoji,
-              selectedMood === mood.value && styles.moodEmojiSelected,
+              selectedMood === m.value && styles.moodEmojiSelected,
             ]}
-            onPress={() => setSelectedMood(mood.value)}
+            onPress={() => setSelectedMood(m.value)}
           >
-            {mood.emoji}
+            {m.emoji}
           </Animatable.Text>
         ))}
       </ScrollView>
 
       {isPositiveMood && (
-        <Animatable.View animation="fadeInDown" duration={800}>
-          <Text style={styles.goodDayText}>✨ It's a great day!</Text>
-        </Animatable.View>
+        <Animatable.Text
+          animation="fadeInDown"
+          duration={800}
+          style={styles.goodDayText}
+        >
+          ✨ It’s a great day!
+        </Animatable.Text>
       )}
     </Animatable.View>
   );
@@ -224,9 +403,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 24,
   },
+  section: {
+    marginBottom: 24,
+  },
   label: {
     fontSize: 16,
-    marginTop: 16,
+    marginTop: 12,
     marginBottom: 6,
   },
   input: {
@@ -246,7 +428,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     alignItems: "center",
-    marginTop: 30,
   },
   saveText: {
     color: "#fff",
@@ -271,5 +452,52 @@ const styles = StyleSheet.create({
     color: "#8A2BE2",
     marginTop: 16,
     fontWeight: "500",
+  },
+  flowButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 8,
+  },
+  flowButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#ececec",
+    marginRight: 8,
+  },
+  flowButtonSelected: {
+    backgroundColor: "#D6765A",
+  },
+  flowButtonText: {
+    color: "#333",
+    fontSize: 14,
+  },
+  symptomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  symptomLabel: {
+    flex: 1,
+    fontSize: 14,
+  },
+  smallInput: {
+    width: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    padding: 6,
+    textAlign: "center",
+    backgroundColor: "#fff",
+  },
+  triggerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  triggerLabel: {
+    flex: 1,
+    fontSize: 14,
   },
 });

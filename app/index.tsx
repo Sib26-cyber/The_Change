@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Animatable from "react-native-animatable";
 import { getPin } from "../storage/securityStorage";
 
 export default function WelcomeScreen() {
@@ -39,18 +40,31 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.appName}>The Change</Text>
-      <Text style={styles.subtitle}>
-        A private space to track how you feel day to day.
-      </Text>
+      <Animatable.View animation="fadeInDown" delay={200}>
+        <Text style={styles.appName}>🌼 The Change</Text>
+      </Animatable.View>
 
-      <Text style={styles.privacy}>
-        Nothing is sent to a server. Everything stays on this device.
-      </Text>
+      <Animatable.View animation="fadeInUp" delay={400}>
+        <Text style={styles.subtitle}>
+          Your private space to track and support your journey.
+        </Text>
+      </Animatable.View>
 
-      <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
-        <Text style={styles.buttonText}>Set up your PIN</Text>
-      </TouchableOpacity>
+      <Animatable.View animation="fadeInUp" delay={600}>
+        <Text style={styles.emojiRow}>🌙 💧 🧘‍♀️ 🌿 📓</Text>
+      </Animatable.View>
+
+      <Animatable.View animation="fadeIn" delay={900}>
+        <Text style={styles.privacy}>
+          Nothing is sent to a server. Everything stays on your device.
+        </Text>
+      </Animatable.View>
+
+      <Animatable.View animation="bounceInUp" delay={1000}>
+        <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
+          <Text style={styles.buttonText}>Set up your PIN</Text>
+        </TouchableOpacity>
+      </Animatable.View>
     </View>
   );
 }
@@ -64,26 +78,35 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF7F2",
   },
   appName: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: "700",
     marginBottom: 12,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 24,
+    color: "#5C4B51",
+    lineHeight: 26,
+  },
+  emojiRow: {
+    fontSize: 28,
+    marginBottom: 24,
   },
   privacy: {
     fontSize: 14,
     textAlign: "center",
-    opacity: 0.8,
+    opacity: 0.75,
     marginBottom: 32,
+    maxWidth: 300,
   },
   button: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 30,
     backgroundColor: "#D6765A",
+    elevation: 2,
   },
   buttonText: {
     color: "#FFFFFF",
