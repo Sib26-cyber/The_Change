@@ -205,13 +205,9 @@ function MoodSelector({
       </ScrollView>
 
       {isPositiveMood && (
-        <AnimatableText
-          animation="fadeInDown"
-          duration={800}
-          style={styles.goodDayText}
-        >
-          ✨ Its a great day!
-        </AnimatableText>
+        <Animatable.View animation="fadeInDown" duration={800}>
+          <Text style={styles.goodDayText}>✨ It's a great day!</Text>
+        </Animatable.View>
       )}
     </Animatable.View>
   );
