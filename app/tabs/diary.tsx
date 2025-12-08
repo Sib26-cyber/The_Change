@@ -14,100 +14,88 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 
-// If you want sliders for severity, you could add:
-// import Slider from "@react-native-community/slider";
-
 let db: SQLite.SQLiteDatabase;
+
+type SymptomKey =
+  | "hotFlushes"
+  | "brainFog"
+  | "moodSwings"
+  | "fatigue"
+  | "jointPain"
+  | "headache"
+  | "anxiety"
+  | "heartburn";
+
+const symptomKeys: SymptomKey[] = [
+  "hotFlushes",
+  "brainFog",
+  "moodSwings",
+  "fatigue",
+  "jointPain",
+  "headache",
+  "anxiety",
+  "heartburn",
+];
+
+type FoodTriggerKey = "spicy" | "alcohol" | "caffeine" | "sugar";
+const foodTriggerKeys: FoodTriggerKey[] = [
+  "spicy",
+  "alcohol",
+  "caffeine",
+  "sugar",
+];
 
 interface DiaryEntryStored {
   id: number;
   date: string;
   mood: string;
   sleep: string;
-  periodStarted: number; // 0 or 1
-  flowIntensity: string; // "light" | "medium" | "heavy" | ""
-  cycleDay: number | null;
-  symptomsJSON: string; // JSON-encoded object
-  foodTriggersJSON: string; // JSON-encoded object
-  foodNotes: string;
-  drinkNotes: string;
+  bleeding: number;
+  symptomsJSON: string;
+  foodTriggersJSON: string;
   notes: string;
 }
 
-const symptomKeys = [
-  "hotFlushes",
-  "brainFog",
-  "moodSwings",
-  "fatigue",
-  "jointPain",
-] as const;
-
-type SymptomKey = (typeof symptomKeys)[number];
-
-type SymptomMap = { [K in SymptomKey]: number };
-
-const foodTriggerKeys = [
-  "alcohol",
-  "caffeine",
-  "sugar",
-  "spicy",
-  "gluten",
-] as const;
-
-type FoodTriggerKey = (typeof foodTriggerKeys)[number];
-
-type FoodTriggerMap = { [K in FoodTriggerKey]: boolean };
-
-// Default symptom map (0 for all)
-const defaultSymptoms: SymptomMap = symptomKeys.reduce((acc, key) => {
-  acc[key] = 0;
-  return acc;
-}, {} as SymptomMap);
-
-// Default food trigger map (all false)
-const defaultFoodTriggers: FoodTriggerMap = foodTriggerKeys.reduce(
-  (acc, key) => {
-    acc[key] = false;
-    return acc;
-  },
-  {} as FoodTriggerMap
-);
-
 export default function DiaryScreen() {
-  const [mood, setMood] = useState("");
-  const [sleep, setSleep] = useState("");
-  const [periodStarted, setPeriodStarted] = useState(false);
-  const [flowIntensity, setFlowIntensity] = useState<
-    "light" | "medium" | "heavy" | ""
-  >("");
-  const [cycleDay, setCycleDay] = useState<string>(""); // we'll parse to number
-  const [symptoms, setSymptoms] = useState<SymptomMap>({ ...defaultSymptoms });
-  const [foodTriggers, setFoodTriggers] = useState<FoodTriggerMap>({
-    ...defaultFoodTriggers,
-  });
-  const [foodNotes, setFoodNotes] = useState("");
-  const [drinkNotes, setDrinkNotes] = useState("");
-  const [notes, setNotes] = useState("");
+  const [mood, setMood] = useState<string>("");
+  const [sleep, setSleep] = useState<"good" | "bad" | "restless">("good");
+  const [bleeding, setBleeding] = useState<boolean>(false);
+  const [symptoms, setSymptoms] = useState<Record<SymptomKey, boolean>>(
+    symptomKeys.reduce(
+      (acc, key) => {
+        acc[key] = false;
+        return acc;
+      },
+      {} as Record<SymptomKey, boolean>
+    )
+  );
+  const [foodTriggers, setFoodTriggers] = useState<
+    Record<FoodTriggerKey, boolean>
+  >(
+    foodTriggerKeys.reduce(
+      (acc, key) => {
+        acc[key] = false;
+        return acc;
+      },
+      {} as Record<FoodTriggerKey, boolean>
+    )
+  );
+  const [notes, setNotes] = useState<string>("");
 
   const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    const setup = async () => {
+    (async () => {
       db = await SQLite.openDatabaseAsync("thechange.db");
-
       await db.runAsync(
         `CREATE TABLE IF NOT EXISTS diary_entries (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           date TEXT UNIQUE,
           mood TEXT,
           sleep TEXT,
-          periodStarted INTEGER,
-          flowIntensity TEXT,
-          cycleDay INTEGER,
+          bleeding INTEGER,
           symptomsJSON TEXT,
           foodTriggersJSON TEXT,
-          foodNotes TEXT,
-          drinkNotes TEXT,
           notes TEXT
         );`
       );
@@ -118,60 +106,55 @@ export default function DiaryScreen() {
       );
 
       if (entry) {
-        setMood(entry.mood);
-        setSleep(entry.sleep);
-        setPeriodStarted(entry.periodStarted === 1);
-        setFlowIntensity(
-          entry.flowIntensity as "light" | "medium" | "heavy" | ""
+        Alert.alert(
+          "Already saved",
+          "You've already filled out today's diary. You can overwrite it if you'd like."
         );
-        setCycleDay(entry.cycleDay?.toString() ?? "");
-        setSymptoms(JSON.parse(entry.symptomsJSON));
-        setFoodTriggers(JSON.parse(entry.foodTriggersJSON));
-        setFoodNotes(entry.foodNotes);
-        setDrinkNotes(entry.drinkNotes);
-        setNotes(entry.notes);
+        // Don't prefill anything — form stays blank
       }
-    };
-
-    setup();
+    })();
   }, []);
 
   const saveEntry = async () => {
     try {
-      const periodInt = periodStarted ? 1 : 0;
-      const cycleDayNum = cycleDay !== "" ? parseInt(cycleDay, 10) : null;
-
       await db.runAsync(
-        `INSERT OR REPLACE INTO diary_entries 
-          (date, mood, sleep, periodStarted, flowIntensity, cycleDay, symptomsJSON, foodTriggersJSON, foodNotes, drinkNotes, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT OR REPLACE INTO diary_entries
+          (date, mood, sleep, bleeding, symptomsJSON, foodTriggersJSON, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?);`,
         [
           today,
           mood,
           sleep,
-          periodInt,
-          flowIntensity,
-          cycleDayNum,
+          bleeding ? 1 : 0,
           JSON.stringify(symptoms),
           JSON.stringify(foodTriggers),
-          foodNotes,
-          drinkNotes,
           notes,
         ]
       );
-
       Alert.alert("✅ Saved", "Your diary entry has been saved locally.");
 
-      // Clear form for new day
+      // Clear form for new entry
       setMood("");
-      setSleep("");
-      setPeriodStarted(false);
-      setFlowIntensity("");
-      setCycleDay("");
-      setSymptoms({ ...defaultSymptoms });
-      setFoodTriggers({ ...defaultFoodTriggers });
-      setFoodNotes("");
-      setDrinkNotes("");
+      setSleep("good");
+      setBleeding(false);
+      setSymptoms(
+        symptomKeys.reduce(
+          (acc, key) => {
+            acc[key] = false;
+            return acc;
+          },
+          {} as Record<SymptomKey, boolean>
+        )
+      );
+      setFoodTriggers(
+        foodTriggerKeys.reduce(
+          (acc, key) => {
+            acc[key] = false;
+            return acc;
+          },
+          {} as Record<FoodTriggerKey, boolean>
+        )
+      );
       setNotes("");
     } catch (error) {
       console.error("Save error:", error);
@@ -181,163 +164,126 @@ export default function DiaryScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Animatable.View animation="fadeInDown" duration={600}>
-        <Text style={styles.title}>🌸 Daily Diary</Text>
+      <Animatable.View animation="fadeInDown" duration={400}>
+        <Text style={styles.pageTitle}>🌸 Daily Diary</Text>
       </Animatable.View>
 
-      {/* Mood selector */}
-      <MoodSelector selectedMood={mood} setSelectedMood={setMood} />
+      {/* Mood & Sleep */}
+      <Card>
+        <MoodSelector selectedMood={mood} setSelectedMood={setMood} />
+        <SleepPicker sleep={sleep} setSleep={setSleep} />
+      </Card>
 
-      {/* Sleep */}
-      <DiaryInput
-        label="😴 Sleep (hrs)"
-        value={sleep}
-        onChangeText={setSleep}
-        delay={100}
-      />
-
-      {/* Period / Cycle */}
-      <Animatable.View animation="fadeInUp" delay={200} style={styles.section}>
-        <Text style={styles.label}>🩸 Period today?</Text>
-        <Switch value={periodStarted} onValueChange={setPeriodStarted} />
-        {periodStarted && (
-          <>
-            <Text style={styles.label}>Flow intensity</Text>
-            <View style={styles.flowButtonsRow}>
-              {["light", "medium", "heavy"].map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  style={[
-                    styles.flowButton,
-                    flowIntensity === opt && styles.flowButtonSelected,
-                  ]}
-                  onPress={() =>
-                    setFlowIntensity(opt as "light" | "medium" | "heavy")
-                  }
-                >
-                  <Text style={styles.flowButtonText}>
-                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Cycle day (optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 14"
-              keyboardType="numeric"
-              value={cycleDay}
-              onChangeText={setCycleDay}
-            />
-          </>
-        )}
-      </Animatable.View>
+      {/* Period / Bleeding */}
+      <Card>
+        <Text style={styles.sectionTitle}>🩸 Period</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>Bleeding today?</Text>
+          <Switch value={bleeding} onValueChange={setBleeding} />
+        </View>
+      </Card>
 
       {/* Symptoms */}
-      <Animatable.View animation="fadeInUp" delay={300} style={styles.section}>
-        <Text style={styles.label}>🔥 Symptoms severity (0–3)</Text>
+      <Card>
+        <Text style={styles.sectionTitle}>
+          🔥 Symptoms (tick all that apply)
+        </Text>
         {symptomKeys.map((key) => (
-          <View key={key} style={styles.symptomRow}>
-            <Text style={styles.symptomLabel}>{key}</Text>
-            <TextInput
-              style={styles.smallInput}
-              keyboardType="numeric"
-              value={symptoms[key].toString()}
-              onChangeText={(t) => {
-                const num = parseInt(t, 10);
-                if (!isNaN(num) && num >= 0 && num <= 3) {
-                  setSymptoms({ ...symptoms, [key]: num });
-                } else if (t === "") {
-                  setSymptoms({ ...symptoms, [key]: 0 });
-                }
-              }}
+          <View key={key} style={styles.row}>
+            <Switch
+              value={symptoms[key]}
+              onValueChange={(v) => setSymptoms({ ...symptoms, [key]: v })}
             />
+            <Text style={styles.checkboxLabel}>{prettySymptom(key)}</Text>
           </View>
         ))}
-      </Animatable.View>
+      </Card>
 
-      {/* Food triggers */}
-      <Animatable.View animation="fadeInUp" delay={400} style={styles.section}>
-        <Text style={styles.label}>🍽️ Food & Drink Triggers</Text>
+      {/* Food & Drink Triggers */}
+      <Card>
+        <Text style={styles.sectionTitle}>🍽️ Food & Drink Triggers</Text>
         {foodTriggerKeys.map((key) => (
-          <View key={key} style={styles.triggerRow}>
-            <Text style={styles.triggerLabel}>{key}</Text>
+          <View key={key} style={styles.row}>
             <Switch
               value={foodTriggers[key]}
               onValueChange={(v) =>
                 setFoodTriggers({ ...foodTriggers, [key]: v })
               }
             />
+            <Text style={styles.checkboxLabel}>{prettyTrigger(key)}</Text>
           </View>
         ))}
+      </Card>
 
-        <Text style={styles.label}>Food notes / details</Text>
+      {/* Notes */}
+      <Card>
+        <Text style={styles.sectionTitle}>📝 Notes (optional)</Text>
         <TextInput
-          style={styles.input}
-          placeholder="What did you eat?"
-          value={foodNotes}
-          onChangeText={setFoodNotes}
+          style={[styles.input, styles.multiline]}
+          placeholder="Any extra thoughts?"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
         />
-
-        <Text style={styles.label}>Drink notes</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Water, wine, coffee, etc."
-          value={drinkNotes}
-          onChangeText={setDrinkNotes}
-        />
-      </Animatable.View>
-
-      {/* Free-form Notes */}
-      <DiaryInput
-        label="📝 Notes"
-        value={notes}
-        onChangeText={setNotes}
-        delay={500}
-        multiline
-      />
+      </Card>
 
       {/* Save Button */}
-      <View style={{ marginTop: 30, marginBottom: 40 }}>
-        <TouchableOpacity style={styles.saveButton} onPress={saveEntry}>
-          <Text style={styles.saveText}>💾 Save Entry</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.saveButton} onPress={saveEntry}>
+        <Animatable.Text
+          animation="fadeInUp"
+          duration={400}
+          style={styles.saveText}
+        >
+          💾 Save Entry
+        </Animatable.Text>
+      </TouchableOpacity>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
-// Reuse DiaryInput
-interface DiaryInputProps {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  multiline?: boolean;
-  delay?: number;
+// — Helpers & sub‑components —
+
+function Card({ children }: { children: React.ReactNode }) {
+  return <View style={styles.card}>{children}</View>;
 }
-function DiaryInput({
-  label,
-  value,
-  onChangeText,
-  multiline = false,
-  delay = 0,
-}: DiaryInputProps) {
+
+function SleepPicker({
+  sleep,
+  setSleep,
+}: {
+  sleep: "good" | "bad" | "restless";
+  setSleep: (v: "good" | "bad" | "restless") => void;
+}) {
+  const options: (typeof sleep)[] = ["good", "bad", "restless"];
   return (
-    <Animatable.View animation="fadeInUp" delay={delay}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, multiline && styles.multiline]}
-        placeholder={`Enter ${label.toLowerCase()}...`}
-        value={value}
-        onChangeText={onChangeText}
-        multiline={multiline}
-      />
-    </Animatable.View>
+    <View style={{ marginBottom: 12 }}>
+      <Text style={[styles.label, { marginBottom: 6 }]}>
+        😴 Sleep last night
+      </Text>
+      <View style={styles.pillRow}>
+        {options.map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            style={[styles.pill, sleep === opt && styles.pillSelected]}
+            onPress={() => setSleep(opt)}
+          >
+            <Text
+              style={[
+                styles.pillText,
+                sleep === opt && styles.pillTextSelected,
+              ]}
+            >
+              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
   );
 }
 
-// Mood selector from before
 const moodOptions = [
   { emoji: "😢", value: "sad" },
   { emoji: "😐", value: "neutral" },
@@ -351,153 +297,193 @@ function MoodSelector({
   setSelectedMood,
 }: {
   selectedMood: string;
-  setSelectedMood: (value: string) => void;
+  setSelectedMood: (v: string) => void;
 }) {
-  const isPositiveMood = ["calm", "happy", "joyful"].includes(selectedMood);
+  const isPositive = ["calm", "happy", "joyful"].includes(selectedMood);
 
   return (
-    <Animatable.View
-      animation="fadeInUp"
-      delay={100}
-      style={styles.moodContainer}
-    >
-      <Text style={styles.label}>😊 How do you feel today?</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {moodOptions.map((m, index) => (
-          <Animatable.Text
+    <View style={{ marginBottom: 12 }}>
+      <Text style={[styles.label, { marginBottom: 6 }]}>😊 Mood today</Text>
+      <View style={styles.pillRow}>
+        {moodOptions.map((m) => (
+          <TouchableOpacity
             key={m.value}
-            animation="bounceIn"
-            delay={index * 80}
             style={[
-              styles.moodEmoji,
-              selectedMood === m.value && styles.moodEmojiSelected,
+              styles.moodPill,
+              selectedMood === m.value && styles.moodPillSelected,
             ]}
             onPress={() => setSelectedMood(m.value)}
           >
-            {m.emoji}
-          </Animatable.Text>
+            <Text
+              style={[
+                styles.moodEmoji,
+                selectedMood === m.value && styles.moodEmojiSelected,
+              ]}
+            >
+              {m.emoji}
+            </Text>
+          </TouchableOpacity>
         ))}
-      </ScrollView>
-
-      {isPositiveMood && (
-        <Animatable.Text
-          animation="fadeInDown"
-          duration={800}
-          style={styles.goodDayText}
-        >
-          ✨ It’s a great day!
+      </View>
+      {isPositive && (
+        <Animatable.Text animation="fadeIn" style={styles.goodDayText}>
+          ✨ Feeling good today!
         </Animatable.Text>
       )}
-    </Animatable.View>
+    </View>
   );
 }
 
+function prettySymptom(key: SymptomKey): string {
+  switch (key) {
+    case "hotFlushes":
+      return "Hot Flushes";
+    case "brainFog":
+      return "Brain Fog";
+    case "moodSwings":
+      return "Mood Swings";
+    case "fatigue":
+      return "Fatigue";
+    case "jointPain":
+      return "Joint Pain";
+    case "headache":
+      return "Headache";
+    case "anxiety":
+      return "Anxiety";
+    case "heartburn":
+      return "Heartburn";
+    default:
+      return key;
+  }
+}
+
+function prettyTrigger(key: FoodTriggerKey): string {
+  switch (key) {
+    case "spicy":
+      return "Spicy food";
+    case "alcohol":
+      return "Alcohol / Wine";
+    case "caffeine":
+      return "Caffeine";
+    case "sugar":
+      return "Sugar / Sweets";
+    default:
+      return key;
+  }
+}
+
+// — Styles —
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: "#fef6fb",
+    padding: 16,
+    backgroundColor: "#fdf6f9",
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "600",
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: "700",
     textAlign: "center",
-    marginBottom: 24,
+    marginVertical: 16,
+    color: "#5C4B51",
   },
-  section: {
-    marginBottom: 24,
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#5C4B51",
   },
   label: {
     fontSize: 16,
-    marginTop: 12,
-    marginBottom: 6,
+    color: "#5C4B51",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 6,
+  },
+  checkboxLabel: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#333",
   },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
     backgroundColor: "#fff",
+    fontSize: 14,
   },
   multiline: {
     height: 100,
     textAlignVertical: "top",
   },
   saveButton: {
-    backgroundColor: "#D675A9",
-    padding: 16,
+    backgroundColor: "#D6765A",
+    paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
+    marginHorizontal: 40,
+    marginTop: 10,
   },
   saveText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
   },
-  moodContainer: {
-    marginBottom: 24,
+  pillRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 8,
+  },
+  pill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#ececec",
+  },
+  pillSelected: {
+    backgroundColor: "#D6765A",
+  },
+  pillText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  pillTextSelected: {
+    color: "#fff",
+  },
+  moodPill: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: "#ececec",
+  },
+  moodPillSelected: {
+    backgroundColor: "#D6765A",
   },
   moodEmoji: {
-    fontSize: 36,
-    marginHorizontal: 8,
-    opacity: 0.5,
+    fontSize: 28,
+    opacity: 0.6,
   },
   moodEmojiSelected: {
     opacity: 1,
-    transform: [{ scale: 1.3 }],
+    transform: [{ scale: 1.2 }],
   },
   goodDayText: {
     textAlign: "center",
-    fontSize: 18,
-    color: "#8A2BE2",
-    marginTop: 16,
+    marginTop: 8,
+    fontSize: 16,
+    color: "#6A4B9D",
     fontWeight: "500",
-  },
-  flowButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 8,
-  },
-  flowButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "#ececec",
-    marginRight: 8,
-  },
-  flowButtonSelected: {
-    backgroundColor: "#D6765A",
-  },
-  flowButtonText: {
-    color: "#333",
-    fontSize: 14,
-  },
-  symptomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  symptomLabel: {
-    flex: 1,
-    fontSize: 14,
-  },
-  smallInput: {
-    width: 40,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 6,
-    textAlign: "center",
-    backgroundColor: "#fff",
-  },
-  triggerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  triggerLabel: {
-    flex: 1,
-    fontSize: 14,
   },
 });
