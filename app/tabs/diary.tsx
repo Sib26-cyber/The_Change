@@ -1,644 +1,279 @@
-// app/tabs/diary.tsx
-import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-
+import * as SQLite from "expo-sqlite";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
-  Animated,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
 } from "react-native";
-import {
-  CycleStatus,
-  DiaryEntry,
-  getDiaryEntries,
-  SymptomFlags,
-  upsertTodayDiaryEntry,
-} from "../../storage/diaryStorage";
-import { layout } from "../../styles/layout";
-import { colors, radius, spacing } from "../../styles/theme";
-import { textStyles } from "../../styles/typography";
+import * as Animatable from "react-native-animatable";
+// Create the animatable text component
+const AnimatableText = Animatable.createAnimatableComponent(Text);
 
-const MOOD_LEVELS = [
-  { value: 1, label: "Very low", emoji: "😣" },
-  { value: 2, label: "Low", emoji: "😕" },
-  { value: 3, label: "Ok", emoji: "😐" },
-  { value: 4, label: "Good", emoji: "🙂" },
-  { value: 5, label: "Great", emoji: "😄" },
-];
+let db: SQLite.SQLiteDatabase;
 
-const DEFAULT_SYMPTOMS: SymptomFlags = {
-  hotFlushes: false,
-  sleepIssues: false,
-  anxiety: false,
-  brainFog: false,
-  lowEnergy: false,
-};
+interface DiaryEntry {
+  id: number;
+  date: string;
+  mood: string;
+  sleep: string;
+  symptoms: string;
+  food: string;
+  drink: string;
+  notes: string;
+}
 
-const cycleLabel = (c: CycleStatus): string => {
-  switch (c) {
-    case "none":
-      return "No bleeding";
-    case "spotting":
-      return "Spotting / light";
-    case "bleeding":
-      return "Period / bleeding";
-    case "unknown":
-    default:
-      return "Not sure";
-  }
-};
-
-// --- streak helper: compute current + best streak from entries ---
-function computeStreaks(entries: DiaryEntry[]): {
-  current: number;
-  best: number;
-} {
-  if (entries.length === 0) {
-    return { current: 0, best: 0 };
-  }
-
-  // Set of day strings "YYYY-MM-DD"
-  const daySet = new Set(
-    entries.map((e) => new Date(e.createdAt).toISOString().slice(0, 10))
-  );
-
-  // Current streak: count backwards from today
-  let current = 0;
-  let cursor = new Date();
-  while (true) {
-    const dayStr = cursor.toISOString().slice(0, 10);
-    if (daySet.has(dayStr)) {
-      current++;
-      cursor.setDate(cursor.getDate() - 1);
-    } else {
-      break;
-    }
-  }
-
-  // Best streak: walk sorted unique dates
-  const days = Array.from(daySet).sort(); // "YYYY-MM-DD" sorts by date
-  let best = 1;
-  let run = 1;
-
-  for (let i = 1; i < days.length; i++) {
-    const prev = new Date(days[i - 1]);
-    const curr = new Date(days[i]);
-    const diffMs = curr.getTime() - prev.getTime();
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-    if (diffDays >= 0.5 && diffDays <= 1.5) {
-      // consecutive days
-      run++;
-    } else {
-      best = Math.max(best, run);
-      run = 1;
-    }
-  }
-  best = Math.max(best, run);
-
-  return { current, best };
+interface DiaryInputProps {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  multiline?: boolean;
+  delay?: number;
 }
 
 export default function DiaryScreen() {
-  const router = useRouter();
-
-  const [note, setNote] = useState("");
-  const [mood, setMood] = useState<number | null>(3);
-  const [symptoms, setSymptoms] = useState<SymptomFlags>(DEFAULT_SYMPTOMS);
-  const [cycle, setCycle] = useState<CycleStatus>("none");
-  const [entries, setEntries] = useState<DiaryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // streaks
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
-
-  const happyAnim = useRef(new Animated.Value(0)).current;
+  const [mood, setMood] = useState("");
+  const [sleep, setSleep] = useState("");
+  const [symptoms, setSymptoms] = useState("");
+  const [food, setFood] = useState("");
+  const [drink, setDrink] = useState("");
+  const [notes, setNotes] = useState("");
+  const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    const load = async () => {
-      const stored = await getDiaryEntries();
-      setEntries(stored);
-      const { current, best } = computeStreaks(stored);
-      setCurrentStreak(current);
-      setBestStreak(best);
-      setLoading(false);
+    const setup = async () => {
+      db = await SQLite.openDatabaseAsync("thechange.db");
+
+      await db.runAsync(
+        `CREATE TABLE IF NOT EXISTS diary_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT UNIQUE,
+          mood TEXT,
+          sleep TEXT,
+          symptoms TEXT,
+          food TEXT,
+          drink TEXT,
+          notes TEXT
+        );`
+      );
+
+      const entry = await db.getFirstAsync<DiaryEntry>(
+        `SELECT * FROM diary_entries WHERE date = ?;`,
+        [today]
+      );
+
+      if (entry) {
+        setMood(entry.mood);
+        setSleep(entry.sleep);
+        setSymptoms(entry.symptoms);
+        setFood(entry.food);
+        setDrink(entry.drink);
+        setNotes(entry.notes);
+      }
     };
-    load();
+
+    setup();
   }, []);
 
-  useEffect(() => {
-    if (mood && mood >= 4) {
-      Animated.sequence([
-        Animated.timing(happyAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(happyAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [mood]);
-
-  const toggleSymptom = (key: keyof SymptomFlags) => {
-    setSymptoms((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const resetForm = () => {
-    setNote("");
-    setMood(3);
-    setSymptoms(DEFAULT_SYMPTOMS);
-    setCycle("none");
-  };
-
-  const handleSave = async () => {
-    if (!note.trim() && mood === null) {
-      Alert.alert(
-        "Nothing to save",
-        "Please choose a mood or write a short note before saving."
+  const saveEntry = async () => {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO diary_entries 
+         (date, mood, sleep, symptoms, food, drink, notes) 
+         VALUES (?, ?, ?, ?, ?, ?, ?);`,
+        [today, mood, sleep, symptoms, food, drink, notes]
       );
-      return;
+
+      Alert.alert("✅ Saved", "Your diary entry has been saved locally.");
+    } catch (error) {
+      console.error("Save error:", error);
+      Alert.alert("❌ Error", "Failed to save your entry.");
     }
-
-    const payload = {
-      mood,
-      note: note.trim(),
-      symptoms: { ...symptoms },
-      cycle,
-    };
-
-    // one entry per calendar day: create or update today's entry
-    await upsertTodayDiaryEntry(payload);
-
-    // reload from storage so entries + streaks are accurate
-    const updated = await getDiaryEntries();
-    setEntries(updated);
-    const { current, best } = computeStreaks(updated);
-    setCurrentStreak(current);
-    setBestStreak(best);
-
-    resetForm();
   };
 
-  const currentMoodMeta =
-    mood != null ? MOOD_LEVELS.find((m) => m.value === mood) : undefined;
-
-  const latest = entries[0];
-  const latestMoodMeta =
-    latest && latest.mood != null
-      ? MOOD_LEVELS.find((m) => m.value === latest.mood)
-      : undefined;
-
-  const latestSymptomsList = latest
-    ? Object.entries(latest.symptoms)
-        .filter(([_, v]) => v)
-        .map(([k]) => {
-          switch (k) {
-            case "hotFlushes":
-              return "Hot flushes";
-            case "sleepIssues":
-              return "Sleep issues";
-            case "anxiety":
-              return "Anxiety";
-            case "brainFog":
-              return "Brain fog";
-            case "lowEnergy":
-              return "Low energy";
-            default:
-              return k;
-          }
-        })
-    : [];
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Today’s check-in</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Animatable.View animation="fadeInDown" duration={600}>
+        <Text style={styles.title}>🌸 Daily Diary</Text>
+      </Animatable.View>
 
-        {/* Mood row */}
-        <View style={styles.section}>
-          <View style={styles.moodHeader}>
-            <Text style={styles.sectionTitle}>Mood</Text>
-            {currentMoodMeta && (
-              <View style={styles.moodLabelRow}>
-                <Text style={styles.moodEmoji}>{currentMoodMeta.emoji}</Text>
-                <Text style={styles.moodLabel}>{currentMoodMeta.label}</Text>
-              </View>
-            )}
-            {mood && mood >= 4 && (
-              <Animated.View
-                style={[
-                  styles.happyBurst,
-                  {
-                    opacity: happyAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.2, 1],
-                    }),
-                    transform: [
-                      {
-                        scale: happyAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [1, 1.2],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Text style={styles.happyText}>Nice day 💛</Text>
-              </Animated.View>
-            )}
-          </View>
+      <MoodSelector selectedMood={mood} setSelectedMood={setMood} />
 
-          <View style={styles.moodRow}>
-            {MOOD_LEVELS.map((m) => {
-              const selected = mood === m.value;
-              return (
-                <TouchableOpacity
-                  key={m.value}
-                  style={[
-                    styles.moodButton,
-                    selected && styles.moodButtonSelected,
-                  ]}
-                  onPress={() => setMood(m.value)}
-                >
-                  <Text style={styles.moodButtonEmoji}>{m.emoji}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+      <DiaryInput
+        label="😴 Sleep"
+        value={sleep}
+        onChangeText={setSleep}
+        delay={200}
+      />
+      <DiaryInput
+        label="🔥 Symptoms"
+        value={symptoms}
+        onChangeText={setSymptoms}
+        delay={300}
+      />
+      <DiaryInput
+        label="🍽️ Food"
+        value={food}
+        onChangeText={setFood}
+        delay={400}
+      />
+      <DiaryInput
+        label="💧 Drink"
+        value={drink}
+        onChangeText={setDrink}
+        delay={500}
+      />
+      <DiaryInput
+        label="📝 Notes"
+        value={notes}
+        onChangeText={setNotes}
+        delay={600}
+        multiline
+      />
 
-        {/* Symptoms row */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Symptoms</Text>
-          <View style={styles.symptomRow}>
-            <SymptomToggle
-              label="Hot flushes"
-              active={symptoms.hotFlushes}
-              onPress={() => toggleSymptom("hotFlushes")}
-            />
-            <SymptomToggle
-              label="Sleep issues"
-              active={symptoms.sleepIssues}
-              onPress={() => toggleSymptom("sleepIssues")}
-            />
-          </View>
-          <View style={styles.symptomRow}>
-            <SymptomToggle
-              label="Anxiety"
-              active={symptoms.anxiety}
-              onPress={() => toggleSymptom("anxiety")}
-            />
-            <SymptomToggle
-              label="Brain fog"
-              active={symptoms.brainFog}
-              onPress={() => toggleSymptom("brainFog")}
-            />
-          </View>
-          <View style={styles.symptomRow}>
-            <SymptomToggle
-              label="Low energy"
-              active={symptoms.lowEnergy}
-              onPress={() => toggleSymptom("lowEnergy")}
-            />
-          </View>
-        </View>
-
-        {/* Menstrual cycle */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Menstrual cycle</Text>
-          <View style={styles.cycleRow}>
-            <CycleToggle
-              label="No bleeding"
-              value="none"
-              selected={cycle === "none"}
-              onPress={() => setCycle("none")}
-            />
-            <CycleToggle
-              label="Spotting / light"
-              value="spotting"
-              selected={cycle === "spotting"}
-              onPress={() => setCycle("spotting")}
-            />
-          </View>
-          <View style={styles.cycleRow}>
-            <CycleToggle
-              label="Period / bleeding"
-              value="bleeding"
-              selected={cycle === "bleeding"}
-              onPress={() => setCycle("bleeding")}
-            />
-            <CycleToggle
-              label="Not sure"
-              value="unknown"
-              selected={cycle === "unknown"}
-              onPress={() => setCycle("unknown")}
-            />
-          </View>
-        </View>
-
-        {/* Notes */}
-        <Text style={styles.sectionTitle}>Notes</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Anything else you would like to remember about today?"
-          multiline
-          value={note}
-          onChangeText={setNote}
-        />
-
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Save today’s check-in</Text>
+      <Animatable.View animation="pulse" delay={800} iterationCount="infinite">
+        <TouchableOpacity style={styles.saveButton} onPress={saveEntry}>
+          <Text style={styles.saveText}>💾 Save Entry</Text>
         </TouchableOpacity>
+      </Animatable.View>
+    </ScrollView>
+  );
+}
 
-        {/* Tiny summary + link to Insights */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Summary</Text>
+function DiaryInput({
+  label,
+  value,
+  onChangeText,
+  multiline = false,
+  delay = 0,
+}: DiaryInputProps) {
+  return (
+    <Animatable.View animation="fadeInUp" delay={delay}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        style={[styles.input, multiline && styles.multiline]}
+        placeholder={`Enter ${label.toLowerCase()}...`}
+        value={value}
+        onChangeText={onChangeText}
+        multiline={multiline}
+      />
+    </Animatable.View>
+  );
+}
 
-          {loading ? (
-            <Text style={styles.summaryText}>Loading your check-ins…</Text>
-          ) : entries.length === 0 ? (
-            <Text style={styles.summaryText}>
-              Once you start saving check-ins, a quick summary will appear here.
-              Full history and trends will be in Insights.
-            </Text>
-          ) : (
-            <>
-              <Text style={styles.summaryText}>
-                You have {entries.length} saved check-in
-                {entries.length > 1 ? "s" : ""}.
-              </Text>
-              <Text style={styles.summaryText}>
-                Current streak: {currentStreak} day
-                {currentStreak === 1 ? "" : "s"} in a row
-              </Text>
-              <Text style={styles.summaryText}>
-                Best streak: {bestStreak} day
-                {bestStreak === 1 ? "" : "s"}
-              </Text>
-              {bestStreak >= 7 && (
-                <Text style={styles.summaryText}>
-                  🎉 You’ve been checking in so regularly — thank you for
-                  looking after yourself.
-                </Text>
-              )}
-              {latest && (
-                <>
-                  <Text style={styles.summaryText}>
-                    Last saved:{" "}
-                    {new Date(latest.createdAt).toLocaleDateString()}
-                  </Text>
-                  {latestMoodMeta && (
-                    <Text style={styles.summaryText}>
-                      Last mood: {latestMoodMeta.emoji} {latestMoodMeta.label}
-                    </Text>
-                  )}
-                  <Text style={styles.summaryText}>
-                    Last cycle: {cycleLabel(latest.cycle)}
-                  </Text>
-                  {latestSymptomsList.length > 0 && (
-                    <Text style={styles.summaryText}>
-                      Last symptoms: {latestSymptomsList.join(", ")}
-                    </Text>
-                  )}
-                </>
-              )}
-            </>
-          )}
+const moodOptions = [
+  { emoji: "😢", value: "sad" },
+  { emoji: "😐", value: "neutral" },
+  { emoji: "🙂", value: "calm" },
+  { emoji: "😄", value: "happy" },
+  { emoji: "😍", value: "joyful" },
+];
 
-          <TouchableOpacity
-            style={styles.summaryButton}
-            onPress={() => router.push("/tabs/insights")}
+function MoodSelector({
+  selectedMood,
+  setSelectedMood,
+}: {
+  selectedMood: string;
+  setSelectedMood: (value: string) => void;
+}) {
+  const isPositiveMood = ["calm", "happy", "joyful"].includes(selectedMood);
+
+  return (
+    <Animatable.View
+      animation="fadeInUp"
+      delay={100}
+      style={styles.moodContainer}
+    >
+      <Text style={styles.label}>😊 How do you feel today?</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {moodOptions.map((mood, index) => (
+          <Animatable.Text
+            key={mood.value}
+            animation="bounceIn"
+            delay={index * 80}
+            style={[
+              styles.moodEmoji,
+              selectedMood === mood.value && styles.moodEmojiSelected,
+            ]}
+            onPress={() => setSelectedMood(mood.value)}
           >
-            <Text style={styles.summaryButtonText}>Open Insights</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-}
+            {mood.emoji}
+          </Animatable.Text>
+        ))}
+      </ScrollView>
 
-type SymptomToggleProps = {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-};
-
-function SymptomToggle({ label, active, onPress }: SymptomToggleProps) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.symptomToggle, active && styles.symptomToggleActive]}
-    >
-      <Text
-        style={[
-          styles.symptomToggleText,
-          active && styles.symptomToggleTextActive,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-type CycleToggleProps = {
-  label: string;
-  value: CycleStatus;
-  selected: boolean;
-  onPress: () => void;
-};
-
-function CycleToggle({ label, selected, onPress }: CycleToggleProps) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.cycleToggle, selected && styles.cycleToggleSelected]}
-    >
-      <Text
-        style={[
-          styles.cycleToggleText,
-          selected && styles.cycleToggleTextSelected,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
+      {isPositiveMood && (
+        <AnimatableText
+          animation="fadeInDown"
+          duration={800}
+          style={styles.goodDayText}
+        >
+          ✨ Its a great day!
+        </AnimatableText>
+      )}
+    </Animatable.View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: layout.screenSafeArea,
-  container: layout.screenContainer,
-  title: textStyles.screenTitle,
-  sectionTitle: textStyles.sectionTitle,
-  section: layout.section,
-
-  moodHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 8,
+  container: {
+    padding: 20,
+    backgroundColor: "#fef6fb",
   },
-  moodLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  moodEmoji: {
-    fontSize: 20,
-  },
-  moodLabel: {
-    fontSize: 14,
-  },
-  happyBurst: {
-    marginLeft: "auto",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "#FFE6D6",
-  },
-  happyText: {
-    fontSize: 12,
-    color: "#D6765A",
-  },
-  moodRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  moodButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "#E3C4B5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moodButtonSelected: {
-    backgroundColor: "#D6765A",
-    borderColor: "#D6765A",
-  },
-  moodButtonEmoji: {
-    fontSize: 22,
-    color: "#333",
-  },
-  symptomRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 6,
-  },
-  symptomToggle: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E3C4B5",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  symptomToggleActive: {
-    backgroundColor: "#D6765A",
-    borderColor: "#D6765A",
-  },
-  symptomToggleText: {
-    fontSize: 12,
-    color: "#5A3E36",
+  title: {
+    fontSize: 26,
+    fontWeight: "600",
     textAlign: "center",
+    marginBottom: 24,
   },
-  symptomToggleTextActive: {
-    color: "#FFFFFF",
-  },
-  cycleRow: {
-    flexDirection: "row",
-    gap: 8,
+  label: {
+    fontSize: 16,
+    marginTop: 16,
     marginBottom: 6,
-  },
-  cycleToggle: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E3C4B5",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  cycleToggleSelected: {
-    backgroundColor: "#D6765A",
-    borderColor: "#D6765A",
-  },
-  cycleToggleText: {
-    fontSize: 12,
-    color: "#5A3E36",
-    textAlign: "center",
-  },
-  cycleToggleTextSelected: {
-    color: "#FFFFFF",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#E3C4B5",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    minHeight: 80,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: "#fff",
+  },
+  multiline: {
+    height: 100,
     textAlignVertical: "top",
-    marginBottom: 12,
   },
-  button: {
-    backgroundColor: "#D6765A",
-    paddingVertical: 12,
-    borderRadius: 24,
+  saveButton: {
+    backgroundColor: "#D675A9",
+    padding: 16,
+    borderRadius: 10,
     alignItems: "center",
-    marginBottom: 16,
+    marginTop: 30,
   },
-  buttonText: {
-    color: "#FFFFFF",
+  saveText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
-  summaryCard: {
-    ...layout.card,
-    marginTop: spacing.sm,
+  moodContainer: {
+    marginBottom: 24,
   },
-  summaryTitle: {
-    fontSize: 15,
+  moodEmoji: {
+    fontSize: 36,
+    marginHorizontal: 8,
+    opacity: 0.5,
+  },
+  moodEmojiSelected: {
+    opacity: 1,
+    transform: [{ scale: 1.3 }],
+  },
+  goodDayText: {
+    textAlign: "center",
+    fontSize: 18,
+    color: "#8A2BE2",
+    marginTop: 16,
     fontWeight: "500",
-    marginBottom: spacing.xs,
-    color: colors.textMain,
-  },
-  summaryText: {
-    ...textStyles.smallMuted,
-    marginBottom: 2,
-  },
-  summaryButton: {
-    marginTop: spacing.sm,
-    alignSelf: "flex-start",
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
-  },
-  summaryButtonText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontWeight: "600",
   },
 });
