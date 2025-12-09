@@ -5,8 +5,10 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="welcome" />
       <Stack.Screen name="set-pin" />
       <Stack.Screen name="unlock" />
+
       <Stack.Screen name="tabs" />
     </Stack>
   );
