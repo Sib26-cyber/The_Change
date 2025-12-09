@@ -1,5 +1,5 @@
 // app/tabs/diary.tsx
-
+import { useRouter } from "expo-router";
 import * as SQLite from "expo-sqlite";
 import React, { useEffect, useState } from "react";
 import {
@@ -14,7 +14,9 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 
-let db: SQLite.SQLiteDatabase;
+// ----------------------
+// TYPES
+// ----------------------
 
 type SymptomKey =
   | "hotFlushes"
@@ -56,10 +58,19 @@ interface DiaryEntryStored {
   notes: string;
 }
 
+// ----------------------
+// MAIN COMPONENT
+// ----------------------
+
 export default function DiaryScreen() {
+  // DB must be inside the component
+  const router = useRouter();
+  const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null);
+
   const [mood, setMood] = useState<string>("");
   const [sleep, setSleep] = useState<"good" | "bad" | "restless">("good");
   const [bleeding, setBleeding] = useState<boolean>(false);
+
   const [symptoms, setSymptoms] = useState<Record<SymptomKey, boolean>>(
     symptomKeys.reduce(
       (acc, key) => {
@@ -69,6 +80,7 @@ export default function DiaryScreen() {
       {} as Record<SymptomKey, boolean>
     )
   );
+
   const [foodTriggers, setFoodTriggers] = useState<
     Record<FoodTriggerKey, boolean>
   >(
@@ -80,14 +92,21 @@ export default function DiaryScreen() {
       {} as Record<FoodTriggerKey, boolean>
     )
   );
+
   const [notes, setNotes] = useState<string>("");
 
   const today = new Date().toISOString().split("T")[0];
 
+  // ----------------------
+  // OPEN DATABASE
+  // ----------------------
+
   useEffect(() => {
     (async () => {
-      db = await SQLite.openDatabaseAsync("thechange.db");
-      await db.runAsync(
+      const database = await SQLite.openDatabaseAsync("thechange.db");
+      setDb(database);
+
+      await database.runAsync(
         `CREATE TABLE IF NOT EXISTS diary_entries (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           date TEXT UNIQUE,
@@ -100,7 +119,7 @@ export default function DiaryScreen() {
         );`
       );
 
-      const entry = await db.getFirstAsync<DiaryEntryStored>(
+      const entry = await database.getFirstAsync<DiaryEntryStored>(
         `SELECT * FROM diary_entries WHERE date = ?;`,
         [today]
       );
@@ -114,7 +133,16 @@ export default function DiaryScreen() {
     })();
   }, []);
 
+  // ----------------------
+  // SAVE ENTRY
+  // ----------------------
+
   const saveEntry = async () => {
+    if (!db) {
+      Alert.alert("⏳ Please wait", "Database is still loading.");
+      return;
+    }
+
     try {
       await db.runAsync(
         `INSERT OR REPLACE INTO diary_entries
@@ -131,9 +159,9 @@ export default function DiaryScreen() {
         ]
       );
 
-      Alert.alert("✅ Saved", "Your diary entry has been saved locally.");
+      Alert.alert("✅ Saved", "Your diary entry has been saved.");
 
-      // Reset fields
+      // Clear all fields
       setMood("");
       setSleep("good");
       setBleeding(false);
@@ -156,11 +184,17 @@ export default function DiaryScreen() {
         )
       );
       setNotes("");
-    } catch (error) {
-      console.error("Save error:", error);
-      Alert.alert("❌ Error", "Failed to save your entry.");
+
+      router.push("/tabs/home");
+    } catch (err) {
+      console.error(err);
+      Alert.alert("❌ Error", "Could not save entry.");
     }
   };
+
+  // ----------------------
+  // RETURN UI
+  // ----------------------
 
   return (
     <ScrollView
@@ -171,13 +205,13 @@ export default function DiaryScreen() {
         <Text style={styles.pageTitle}>🌸 Daily Diary</Text>
       </Animatable.View>
 
-      {/* Mood & Sleep */}
+      {/* Mood + Sleep */}
       <Card>
         <MoodSelector selectedMood={mood} setSelectedMood={setMood} />
         <SleepPicker sleep={sleep} setSleep={setSleep} />
       </Card>
 
-      {/* Period */}
+      {/* Bleeding */}
       <Card>
         <Text style={styles.sectionTitle}>🩸 Period</Text>
         <View style={styles.row}>
@@ -188,9 +222,7 @@ export default function DiaryScreen() {
 
       {/* Symptoms */}
       <Card>
-        <Text style={styles.sectionTitle}>
-          🔥 Symptoms (tick all that apply)
-        </Text>
+        <Text style={styles.sectionTitle}>🔥 Symptoms</Text>
         {symptomKeys.map((key) => (
           <View key={key} style={styles.row}>
             <Switch
@@ -202,7 +234,7 @@ export default function DiaryScreen() {
         ))}
       </Card>
 
-      {/* Food Triggers */}
+      {/* Food & Drink */}
       <Card>
         <Text style={styles.sectionTitle}>🍽️ Food & Drink Triggers</Text>
         {foodTriggerKeys.map((key) => (
@@ -220,7 +252,7 @@ export default function DiaryScreen() {
 
       {/* Notes */}
       <Card>
-        <Text style={styles.sectionTitle}>📝 Notes (optional)</Text>
+        <Text style={styles.sectionTitle}>📝 Notes</Text>
         <TextInput
           style={[styles.input, styles.multiline]}
           placeholder="Any extra thoughts?"
@@ -230,7 +262,7 @@ export default function DiaryScreen() {
         />
       </Card>
 
-      {/* Save Button */}
+      {/* Save */}
       <TouchableOpacity style={styles.saveButton} onPress={saveEntry}>
         <Animatable.Text
           animation="fadeInUp"
@@ -246,7 +278,10 @@ export default function DiaryScreen() {
   );
 }
 
-// Sub-components
+// ----------------------
+// SUB-COMPONENTS
+// ----------------------
+
 function Card({ children }: { children: React.ReactNode }) {
   return <View style={styles.card}>{children}</View>;
 }
@@ -260,10 +295,8 @@ function SleepPicker({
 }) {
   const options: (typeof sleep)[] = ["good", "bad", "restless"];
   return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={[styles.label, { marginBottom: 6 }]}>
-        😴 Sleep last night
-      </Text>
+    <View>
+      <Text style={[styles.label, { marginBottom: 6 }]}>😴 Sleep</Text>
       <View style={styles.pillRow}>
         {options.map((opt) => (
           <TouchableOpacity
@@ -304,7 +337,7 @@ function MoodSelector({
   const isPositive = ["calm", "happy", "joyful"].includes(selectedMood);
 
   return (
-    <View style={{ marginBottom: 12 }}>
+    <View>
       <Text style={[styles.label, { marginBottom: 6 }]}>😊 Mood today</Text>
       <View style={styles.pillRow}>
         {moodOptions.map((m) => (
@@ -337,46 +370,38 @@ function MoodSelector({
   );
 }
 
-// Name formatting helpers
+// ----------------------
+// HELPERS
+// ----------------------
+
 function prettySymptom(key: SymptomKey): string {
-  switch (key) {
-    case "hotFlushes":
-      return "Hot Flushes";
-    case "brainFog":
-      return "Brain Fog";
-    case "moodSwings":
-      return "Mood Swings";
-    case "fatigue":
-      return "Fatigue";
-    case "jointPain":
-      return "Joint Pain";
-    case "headache":
-      return "Headache";
-    case "anxiety":
-      return "Anxiety";
-    case "heartburn":
-      return "Heartburn";
-    default:
-      return key;
-  }
+  const mapping: Record<SymptomKey, string> = {
+    hotFlushes: "Hot Flushes",
+    brainFog: "Brain Fog",
+    moodSwings: "Mood Swings",
+    fatigue: "Fatigue",
+    jointPain: "Joint Pain",
+    headache: "Headache",
+    anxiety: "Anxiety",
+    heartburn: "Heartburn",
+  };
+  return mapping[key];
 }
 
 function prettyTrigger(key: FoodTriggerKey): string {
-  switch (key) {
-    case "spicy":
-      return "Spicy food";
-    case "alcohol":
-      return "Alcohol / Wine";
-    case "caffeine":
-      return "Caffeine";
-    case "sugar":
-      return "Sugar / Sweets";
-    default:
-      return key;
-  }
+  const mapping: Record<FoodTriggerKey, string> = {
+    spicy: "Spicy Food",
+    alcohol: "Alcohol",
+    caffeine: "Caffeine",
+    sugar: "Sugar",
+  };
+  return mapping[key];
 }
 
-// Styles
+// ----------------------
+// STYLES
+// ----------------------
+
 const styles = StyleSheet.create({
   scrollContainer: {
     padding: 16,
