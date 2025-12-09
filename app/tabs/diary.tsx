@@ -110,7 +110,6 @@ export default function DiaryScreen() {
           "Already saved",
           "You've already filled out today's diary. You can overwrite it if you'd like."
         );
-        // Don't prefill anything — form stays blank
       }
     })();
   }, []);
@@ -131,9 +130,10 @@ export default function DiaryScreen() {
           notes,
         ]
       );
+
       Alert.alert("✅ Saved", "Your diary entry has been saved locally.");
 
-      // Clear form for new entry
+      // Reset fields
       setMood("");
       setSleep("good");
       setBleeding(false);
@@ -163,7 +163,10 @@ export default function DiaryScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContainer}
+      showsVerticalScrollIndicator={false}
+    >
       <Animatable.View animation="fadeInDown" duration={400}>
         <Text style={styles.pageTitle}>🌸 Daily Diary</Text>
       </Animatable.View>
@@ -174,7 +177,7 @@ export default function DiaryScreen() {
         <SleepPicker sleep={sleep} setSleep={setSleep} />
       </Card>
 
-      {/* Period / Bleeding */}
+      {/* Period */}
       <Card>
         <Text style={styles.sectionTitle}>🩸 Period</Text>
         <View style={styles.row}>
@@ -199,7 +202,7 @@ export default function DiaryScreen() {
         ))}
       </Card>
 
-      {/* Food & Drink Triggers */}
+      {/* Food Triggers */}
       <Card>
         <Text style={styles.sectionTitle}>🍽️ Food & Drink Triggers</Text>
         {foodTriggerKeys.map((key) => (
@@ -243,8 +246,7 @@ export default function DiaryScreen() {
   );
 }
 
-// — Helpers & sub‑components —
-
+// Sub-components
 function Card({ children }: { children: React.ReactNode }) {
   return <View style={styles.card}>{children}</View>;
 }
@@ -325,6 +327,7 @@ function MoodSelector({
           </TouchableOpacity>
         ))}
       </View>
+
       {isPositive && (
         <Animatable.Text animation="fadeIn" style={styles.goodDayText}>
           ✨ Feeling good today!
@@ -334,6 +337,7 @@ function MoodSelector({
   );
 }
 
+// Name formatting helpers
 function prettySymptom(key: SymptomKey): string {
   switch (key) {
     case "hotFlushes":
@@ -372,11 +376,13 @@ function prettyTrigger(key: FoodTriggerKey): string {
   }
 }
 
-// — Styles —
+// Styles
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
     padding: 16,
     backgroundColor: "#fdf6f9",
+    flexGrow: 1,
+    paddingBottom: 60,
   },
   pageTitle: {
     fontSize: 28,

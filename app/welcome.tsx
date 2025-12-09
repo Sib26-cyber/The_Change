@@ -7,7 +7,7 @@ export default function Welcome() {
   return (
     <View style={styles.container}>
       <Image
-        source={require("../assets/logo.png")} // place your logo here
+        source={require("../assets/images/logo_theChange.png")}
         style={styles.logo}
       />
 

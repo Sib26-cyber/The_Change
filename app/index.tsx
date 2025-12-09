@@ -12,7 +12,7 @@ export default function Index() {
       const pin = await SecureStore.getItemAsync("pin");
 
       if (!pin) {
-        router.replace("/welcome"); // FIRST TIME USER
+        router.replace("/welcome" as any); // FIRST TIME USER
       } else {
         router.replace("/unlock"); // RETURNING USER
       }

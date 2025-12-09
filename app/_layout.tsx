@@ -8,7 +8,6 @@ export default function RootLayout() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="set-pin" />
       <Stack.Screen name="unlock" />
-
       <Stack.Screen name="tabs" />
     </Stack>
   );
