@@ -37,16 +37,6 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="symptoms"
-        options={{
-          title: "Symptoms",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="medkit-outline" size={24} color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
         name="insights"
         options={{
           title: "Insights",

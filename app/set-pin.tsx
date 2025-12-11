@@ -12,6 +12,14 @@ import {
 
 import { savePin } from "../storage/securityStorage";
 
+// -------------------------------------------------------------
+// SetPinScreen Component
+// -------------------------------------------------------------
+// This screen allows first-time users to create a secure PIN
+// for protecting their app data. The PIN is validated and
+// stored securely using expo-secure-store. After successful
+// PIN creation, users are redirected to the main app (diary tab).
+// -------------------------------------------------------------
 export default function SetPinScreen() {
   const router = useRouter();
   const [pin, setPin] = useState("");

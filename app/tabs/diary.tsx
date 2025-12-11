@@ -264,13 +264,9 @@ export default function DiaryScreen() {
 
       {/* Save */}
       <TouchableOpacity style={styles.saveButton} onPress={saveEntry}>
-        <Animatable.Text
-          animation="fadeInUp"
-          duration={400}
-          style={styles.saveText}
-        >
-          💾 Save Entry
-        </Animatable.Text>
+        <Animatable.View animation="fadeInUp" duration={400}>
+          <Text style={styles.saveText}>💾 Save Entry</Text>
+        </Animatable.View>
       </TouchableOpacity>
 
       <View style={{ height: 40 }} />
@@ -362,9 +358,9 @@ function MoodSelector({
       </View>
 
       {isPositive && (
-        <Animatable.Text animation="fadeIn" style={styles.goodDayText}>
-          ✨ Feeling good today!
-        </Animatable.Text>
+        <Animatable.View animation="fadeIn">
+          <Text style={styles.goodDayText}>✨ Feeling good today!</Text>
+        </Animatable.View>
       )}
     </View>
   );
