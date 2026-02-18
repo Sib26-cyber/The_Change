@@ -50,33 +50,35 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Settings</Text>
+      <View style={styles.contentContainer}>
+        <Text style={styles.header}>⚙️ Settings</Text>
 
-      {/* Log out (no data deleted) */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Log out</Text>
-      </TouchableOpacity>
+        {/* Log out (no data deleted) */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Log out</Text>
+        </TouchableOpacity>
 
-      {/* Reset PIN */}
-      <TouchableOpacity style={styles.button} onPress={handleResetPin}>
-        <Text style={styles.buttonText}>Reset PIN</Text>
-      </TouchableOpacity>
+        {/* Reset PIN */}
+        <TouchableOpacity style={styles.button} onPress={handleResetPin}>
+          <Text style={styles.buttonText}>Reset PIN</Text>
+        </TouchableOpacity>
 
-      {/* Clear all local data */}
-      <TouchableOpacity
-        style={[styles.button, styles.dangerButton]}
-        onPress={handleClearData}
-      >
-        <Text style={styles.buttonText}>Clear local data</Text>
-      </TouchableOpacity>
+        {/* Clear all local data */}
+        <TouchableOpacity
+          style={[styles.button, styles.dangerButton]}
+          onPress={handleClearData}
+        >
+          <Text style={styles.buttonText}>Clear local data</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.note}>
-        Log out will lock the app without deleting anything.
-        {"\n"}
-        Reset PIN changes your PIN but keeps your diary.
-        {"\n"}
-        Clear local data permanently wipes your PIN and diary from this device.
-      </Text>
+        <Text style={styles.note}>
+          Log out will lock the app without deleting anything.
+          {"\n\n"}
+          Reset PIN changes your PIN but keeps your diary.
+          {"\n\n"}
+          Clear local data permanently wipes your PIN and diary from this device.
+        </Text>
+      </View>
     </View>
   );
 }
@@ -84,31 +86,38 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: "#FFFDF7",
+    backgroundColor: "#FDF6F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  contentContainer: {
+    width: "100%",
+    maxWidth: 400,
+    paddingHorizontal: 24,
   },
   header: {
-    fontSize: 22,
-    fontWeight: "600",
-    marginBottom: 24,
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 40,
     textAlign: "center",
+    color: "#5C4B51",
   },
   logoutButton: {
-    backgroundColor: "#E3C4B5",
-    paddingVertical: 12,
-    borderRadius: 24,
+    backgroundColor: "#E8D5D1",
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
     marginBottom: 20,
   },
   logoutText: {
-    color: "#5A3E36",
-    fontSize: 16,
+    color: "#5C4B51",
+    fontSize: 18,
     fontWeight: "600",
   },
   button: {
     backgroundColor: "#D6765A",
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
     marginBottom: 16,
   },
@@ -117,15 +126,15 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
   },
   note: {
-    marginTop: 28,
+    marginTop: 32,
     textAlign: "center",
-    fontSize: 12,
-    color: "#A17A70",
+    fontSize: 13,
+    color: "#999",
     paddingHorizontal: 16,
-    lineHeight: 18,
+    lineHeight: 20,
   },
 });

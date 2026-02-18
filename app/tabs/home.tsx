@@ -1,60 +1,95 @@
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from "react-native";
 
 export default function Home() {
   const router = useRouter();
 
+  const menuItems = [
+    { icon: "📝", label: "Daily Diary", route: "/tabs/diary", color: "#D6765A" },
+    { icon: "📊", label: "Analytics", route: "/tabs/analytics", color: "#9B59B6" },
+    { icon: "📅", label: "Insights", route: "/tabs/insights", color: "#4A90E2" },
+    { icon: "📈", label: "Charts", route: "/tabs/charts", color: "#E67E96" },
+    { icon: "⚙️", label: "Settings", route: "/tabs/settings", color: "#6C7A89" },
+  ];
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Welcome back</Text>
-      <Text style={styles.sub}>
-        Here is your wellbeing space. What would you like to do today?
-      </Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>Welcome back 🌸</Text>
+        <Text style={styles.sub}>
+          Here is your wellbeing space. What would you like to do today?
+        </Text>
+      </View>
 
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => router.push("/tabs/diary")}
-      >
-        <Text style={styles.cardText}>Open Diary</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => router.push("/tabs/insights")}
-      >
-        <Text style={styles.cardText}>View Insights</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.gridContainer}>
+        {menuItems.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[styles.card, { backgroundColor: item.color }]}
+            onPress={() => router.push(item.route as any)}
+          >
+            <Text style={styles.cardIcon}>{item.icon}</Text>
+            <Text style={styles.cardText}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    paddingTop: 40,
+    flexGrow: 1,
+    paddingTop: 60,
     paddingHorizontal: 20,
-    backgroundColor: "#FFF8F2",
+    paddingBottom: 40,
+    backgroundColor: "#FDF6F9",
+  },
+  headerContainer: {
+    alignItems: "center",
+    marginBottom: 30,
   },
   header: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "700",
-    color: "#5A3E85",
+    color: "#5C4B51",
     marginBottom: 10,
+    textAlign: "center",
   },
   sub: {
     fontSize: 16,
-    color: "#555",
-    marginBottom: 30,
+    color: "#777",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 10,
+  },
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 16,
   },
   card: {
-    backgroundColor: "#7A4DBA",
+    width: 160,
+    height: 140,
+    borderRadius: 20,
     padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  cardIcon: {
+    fontSize: 48,
+    marginBottom: 12,
   },
   cardText: {
     color: "#FFF",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
+    textAlign: "center",
   },
 });

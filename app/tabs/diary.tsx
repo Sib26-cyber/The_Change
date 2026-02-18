@@ -53,6 +53,7 @@ interface DiaryEntryStored {
   mood: string;
   sleep: string;
   bleeding: number;
+  waterIntake: number;
   symptomsJSON: string;
   foodTriggersJSON: string;
   notes: string;
@@ -70,6 +71,7 @@ export default function DiaryScreen() {
   const [mood, setMood] = useState<string>("");
   const [sleep, setSleep] = useState<"good" | "bad" | "restless">("good");
   const [bleeding, setBleeding] = useState<boolean>(false);
+  const [waterIntake, setWaterIntake] = useState<number>(0);
 
   const [symptoms, setSymptoms] = useState<Record<SymptomKey, boolean>>(
     symptomKeys.reduce(
@@ -113,11 +115,21 @@ export default function DiaryScreen() {
           mood TEXT,
           sleep TEXT,
           bleeding INTEGER,
+          waterIntake INTEGER DEFAULT 0,
           symptomsJSON TEXT,
           foodTriggersJSON TEXT,
           notes TEXT
         );`
       );
+
+      // Add waterIntake column if it doesn't exist (migration for existing databases)
+      try {
+        await database.runAsync(
+          `ALTER TABLE diary_entries ADD COLUMN waterIntake INTEGER DEFAULT 0;`
+        );
+      } catch (e) {
+        // Column already exists, ignore error
+      }
 
       const entry = await database.getFirstAsync<DiaryEntryStored>(
         `SELECT * FROM diary_entries WHERE date = ?;`,
@@ -146,13 +158,14 @@ export default function DiaryScreen() {
     try {
       await db.runAsync(
         `INSERT OR REPLACE INTO diary_entries
-          (date, mood, sleep, bleeding, symptomsJSON, foodTriggersJSON, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?);`,
+          (date, mood, sleep, bleeding, waterIntake, symptomsJSON, foodTriggersJSON, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           today,
           mood,
           sleep,
           bleeding ? 1 : 0,
+          waterIntake,
           JSON.stringify(symptoms),
           JSON.stringify(foodTriggers),
           notes,
@@ -165,6 +178,7 @@ export default function DiaryScreen() {
       setMood("");
       setSleep("good");
       setBleeding(false);
+      setWaterIntake(0);
       setSymptoms(
         symptomKeys.reduce(
           (acc, key) => {
@@ -203,11 +217,16 @@ export default function DiaryScreen() {
     >
       <Animatable.View animation="fadeInDown" duration={400}>
         <Text style={styles.pageTitle}>🌸 Daily Diary</Text>
+        <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
       </Animatable.View>
 
-      {/* Mood + Sleep */}
+      {/* Mood */}
       <Card>
         <MoodSelector selectedMood={mood} setSelectedMood={setMood} />
+      </Card>
+
+      {/* Sleep */}
+      <Card>
         <SleepPicker sleep={sleep} setSleep={setSleep} />
       </Card>
 
@@ -216,7 +235,12 @@ export default function DiaryScreen() {
         <Text style={styles.sectionTitle}>🩸 Period</Text>
         <View style={styles.row}>
           <Text style={styles.label}>Bleeding today?</Text>
-          <Switch value={bleeding} onValueChange={setBleeding} />
+          <Switch 
+            value={bleeding} 
+            onValueChange={setBleeding}
+            trackColor={{ false: '#E0E0E0', true: '#D6765A' }}
+            thumbColor={bleeding ? '#fff' : '#f4f3f4'}
+          />
         </View>
       </Card>
 
@@ -228,10 +252,40 @@ export default function DiaryScreen() {
             <Switch
               value={symptoms[key]}
               onValueChange={(v) => setSymptoms({ ...symptoms, [key]: v })}
+              trackColor={{ false: '#E0E0E0', true: '#D6765A' }}
+              thumbColor={symptoms[key] ? '#fff' : '#f4f3f4'}
             />
             <Text style={styles.checkboxLabel}>{prettySymptom(key)}</Text>
           </View>
         ))}
+      </Card>
+
+      {/* Wellness */}
+      <Card>
+        <Text style={styles.sectionTitle}>💧 Wellness</Text>
+        <View style={styles.waterContainer}>
+          <Text style={styles.label}>Water Intake</Text>
+          <View style={styles.waterControls}>
+            <TouchableOpacity 
+              style={styles.waterButton}
+              onPress={() => setWaterIntake(Math.max(0, waterIntake - 1))}
+            >
+              <Text style={styles.waterButtonText}>−</Text>
+            </TouchableOpacity>
+            <View style={styles.waterDisplay}>
+              <Text style={styles.waterCount}>{waterIntake} glasses</Text>
+              <Text style={styles.waterGlassesIcons}>
+                {Array.from({ length: Math.min(waterIntake, 8) }, () => '💧').join('')}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.waterButton}
+              onPress={() => setWaterIntake(Math.min(20, waterIntake + 1))}
+            >
+              <Text style={styles.waterButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Card>
 
       {/* Food & Drink */}
@@ -244,6 +298,8 @@ export default function DiaryScreen() {
               onValueChange={(v) =>
                 setFoodTriggers({ ...foodTriggers, [key]: v })
               }
+              trackColor={{ false: '#E0E0E0', true: '#D6765A' }}
+              thumbColor={foodTriggers[key] ? '#fff' : '#f4f3f4'}
             />
             <Text style={styles.checkboxLabel}>{prettyTrigger(key)}</Text>
           </View>
@@ -292,7 +348,7 @@ function SleepPicker({
   const options: (typeof sleep)[] = ["good", "bad", "restless"];
   return (
     <View>
-      <Text style={[styles.label, { marginBottom: 6 }]}>😴 Sleep</Text>
+      <Text style={styles.sectionTitle}>😴 Sleep</Text>
       <View style={styles.pillRow}>
         {options.map((opt) => (
           <TouchableOpacity
@@ -334,26 +390,31 @@ function MoodSelector({
 
   return (
     <View>
-      <Text style={[styles.label, { marginBottom: 6 }]}>😊 Mood today</Text>
+      <Text style={styles.sectionTitle}>😊 Mood today</Text>
       <View style={styles.pillRow}>
         {moodOptions.map((m) => (
-          <TouchableOpacity
+          <Animatable.View
             key={m.value}
-            style={[
-              styles.moodPill,
-              selectedMood === m.value && styles.moodPillSelected,
-            ]}
-            onPress={() => setSelectedMood(m.value)}
+            animation={selectedMood === m.value ? "pulse" : undefined}
+            duration={400}
           >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.moodEmoji,
-                selectedMood === m.value && styles.moodEmojiSelected,
+                styles.moodPill,
+                selectedMood === m.value && styles.moodPillSelected,
               ]}
+              onPress={() => setSelectedMood(m.value)}
             >
-              {m.emoji}
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.moodEmoji,
+                  selectedMood === m.value && styles.moodEmojiSelected,
+                ]}
+              >
+                {m.emoji}
+              </Text>
+            </TouchableOpacity>
+          </Animatable.View>
         ))}
       </View>
 
@@ -409,8 +470,15 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     textAlign: "center",
-    marginVertical: 16,
+    marginTop: 16,
+    marginBottom: 4,
     color: "#5C4B51",
+  },
+  dateText: {
+    fontSize: 14,
+    textAlign: "center",
+    color: "#999",
+    marginBottom: 16,
   },
   card: {
     backgroundColor: "#FFFFFF",
@@ -488,29 +556,107 @@ const styles = StyleSheet.create({
   },
   pillTextSelected: {
     color: "#fff",
+    fontWeight: "600",
   },
   moodPill: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: "#ececec",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 3,
+    borderColor: "#E0E0E0",
+    justifyContent: "center",
+    alignItems: "center",
   },
   moodPillSelected: {
-    backgroundColor: "#D6765A",
+    backgroundColor: "#FFE8E8",
+    borderColor: "#D6765A",
+    transform: [{ scale: 1.1 }],
   },
   moodEmoji: {
-    fontSize: 28,
-    opacity: 0.6,
+    fontSize: 32,
   },
   moodEmojiSelected: {
-    opacity: 1,
-    transform: [{ scale: 1.2 }],
+    fontSize: 36,
   },
   goodDayText: {
     textAlign: "center",
+    color: "#D6765A",
+    fontSize: 14,
     marginTop: 8,
+    fontStyle: "italic",
+  },
+  paterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  waterControlsCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  waterButtonSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#D6765A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  waterButtonTextSmall: {
+    fontSize: 20,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  waterCountSmall: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#5C4B51",
+    minWidth: 70,
+    textAlign: "center",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E0E0E0",
+    marginVertical: 12,
+  },
+  waterContainer: {
+    marginTop: 8,
+  },
+  waterControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    gap: 16,
+  },
+  waterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#D6765A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  waterButtonText: {
+    fontSize: 22,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  waterDisplay: {
+    alignItems: "center",
+    minWidth: 120,
+  },
+  waterCount: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#5C4B51",
+    marginBottom: 4,
+  },
+  waterGlassesIcons: {
     fontSize: 16,
-    color: "#6A4B9D",
-    fontWeight: "500",
+    lineHeight: 20,
   },
 });

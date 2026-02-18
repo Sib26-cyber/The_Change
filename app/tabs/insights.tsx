@@ -1,6 +1,6 @@
 // app/tabs/insights.tsx
 import * as SQLite from "expo-sqlite";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -31,7 +31,7 @@ export default function InsightsScreen() {
       const db = await SQLite.openDatabaseAsync("thechange.db");
       const result = await db
         .getAllAsync<StoredEntry>(
-          `SELECT * FROM diary_entries ORDER BY date ASC;`
+          `SELECT * FROM diary_entries ORDER BY date ASC;`,
         )
         .catch((err) => {
           console.error("DB read error:", err);
@@ -43,7 +43,21 @@ export default function InsightsScreen() {
 
       result.forEach((e) => {
         map[e.date] = e;
-        marks[e.date] = { marked: true, dotColor: "#D6765A" };
+        // If bleeding day, show red circle, otherwise pink dot
+        if (e.bleeding === 1) {
+          marks[e.date] = {
+            selected: true,
+            selectedColor: "#FFE5E5",
+            selectedTextColor: "#E74C3C",
+            marked: true,
+            dotColor: "#E74C3C",
+          };
+        } else {
+          marks[e.date] = {
+            marked: true,
+            dotColor: "#D6765A",
+          };
+        }
       });
 
       setEntries(map);
@@ -65,6 +79,27 @@ export default function InsightsScreen() {
   };
 
   const entry = entries[selectedDate] ?? null;
+  const today = new Date().toISOString().split("T")[0];
+
+  // Calculate days since last period
+  const getDaysSinceLastPeriod = () => {
+    const periodDates = Object.entries(entries)
+      .filter(([_, entry]) => entry.bleeding === 1)
+      .map(([date, _]) => date)
+      .sort()
+      .reverse();
+
+    if (periodDates.length === 0) return null;
+
+    const lastPeriodDate = new Date(periodDates[0]);
+    const todayDate = new Date(today);
+    const diffTime = todayDate.getTime() - lastPeriodDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+  };
+
+  const daysSinceLastPeriod = getDaysSinceLastPeriod();
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -72,9 +107,37 @@ export default function InsightsScreen() {
         onDayPress={onDayPress}
         markedDates={{
           ...markedDates,
-          [selectedDate]: { selected: true, selectedColor: "#D6765A" },
+          [today]: {
+            ...markedDates[today],
+            today: true,
+            todayTextColor: "#D6765A",
+          },
+          [selectedDate]: {
+            ...markedDates[selectedDate],
+            selected: true,
+            selectedColor: "#D6765A",
+          },
+        }}
+        theme={{
+          selectedDayBackgroundColor: "#D6765A",
+          todayTextColor: "#D6765A",
+          dotColor: "#D6765A",
         }}
       />
+
+      {daysSinceLastPeriod !== null && (
+        <View style={styles.periodTrackerCard}>
+          <Text style={styles.periodTrackerLabel}>Days since last period</Text>
+          <Text style={styles.periodTrackerCount}>{daysSinceLastPeriod}</Text>
+          <Text style={styles.periodTrackerSubtext}>
+            {daysSinceLastPeriod === 0
+              ? "Today"
+              : daysSinceLastPeriod === 1
+                ? "Yesterday"
+                : `${daysSinceLastPeriod} days ago`}
+          </Text>
+        </View>
+      )}
 
       {selectedDate === "" && (
         <Text style={styles.infoText}>Tap a date to view your entry.</Text>
@@ -86,8 +149,10 @@ export default function InsightsScreen() {
 
       {entry && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Entry: {selectedDate}</Text>
-          <Text style={styles.line}>Mood: {entry.mood}</Text>
+          <Text style={styles.cardTitle}>
+            Entry: {selectedDate.split("-").reverse().join("-")}
+          </Text>
+          <Text style={styles.line}>Mood: {entry.mood || "Not selected"}</Text>
           <Text style={styles.line}>Sleep: {entry.sleep}</Text>
           {entry.bleeding === 1 && (
             <Text style={styles.line}>🩸 Period day</Text>
@@ -99,7 +164,7 @@ export default function InsightsScreen() {
               <Text key={k} style={styles.line}>
                 – {k}
               </Text>
-            ) : null
+            ) : null,
           )}
 
           <Text style={styles.sectionTitle}>Food / Drink Triggers:</Text>
@@ -108,7 +173,7 @@ export default function InsightsScreen() {
               <Text key={k} style={styles.line}>
                 – {k}
               </Text>
-            ) : null
+            ) : null,
           )}
 
           <Text style={styles.sectionTitle}>Notes:</Text>
@@ -121,7 +186,9 @@ export default function InsightsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingTop: 40,
+    paddingHorizontal: 8,
+    paddingBottom: 16,
     backgroundColor: "#fdf6f9",
   },
   loader: {
@@ -129,8 +196,41 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  periodTrackerCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 3,
+    borderLeftColor: "#E74C3C",
+  },
+  periodTrackerLabel: {
+    fontSize: 11,
+    color: "#777",
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  periodTrackerCount: {
+    fontSize: 38,
+    fontWeight: "700",
+    color: "#E74C3C",
+    marginBottom: 3,
+  },
+  periodTrackerSubtext: {
+    fontSize: 13,
+    color: "#999",
+  },
   infoText: {
-    marginTop: 16,
+    marginTop: 12,
     textAlign: "center",
     color: "#555",
   },
@@ -138,7 +238,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
-    marginTop: 20,
+    marginTop: 12,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },

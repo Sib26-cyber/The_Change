@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "We use Face ID to securely unlock your diary and protect your privacy."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -40,7 +43,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow The Change to use Face ID to securely unlock your diary."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
