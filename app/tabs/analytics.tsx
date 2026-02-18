@@ -19,6 +19,7 @@ type DiaryEntry = {
   date: string;
   mood: string;
   sleep: string;
+  exercise: string;
   bleeding: number;
   symptomsJSON: string;
   foodTriggersJSON: string;
@@ -201,6 +202,14 @@ export default function AnalyticsScreen() {
     sleepCounts[entry.sleep] = (sleepCounts[entry.sleep] || 0) + 1;
   });
 
+  // Exercise stats
+  const exerciseCounts: Record<string, number> = {};
+  filteredEntries.forEach((entry) => {
+    if (entry.exercise) {
+      exerciseCounts[entry.exercise] = (exerciseCounts[entry.exercise] || 0) + 1;
+    }
+  });
+
   // Period tracking
   const periodDays = filteredEntries.filter((e) => e.bleeding === 1).length;
 
@@ -346,6 +355,23 @@ export default function AnalyticsScreen() {
           ))}
         </View>
       </View>
+
+      {/* Exercise Activity */}
+      {Object.keys(exerciseCounts).length > 0 && (
+        <View style={styles.chartSection}>
+          <Text style={styles.chartTitle}>🏃‍♀️ Exercise Activity</Text>
+          <View style={styles.sleepGrid}>
+            {Object.entries(exerciseCounts).map(([level, count]) => (
+              <View key={level} style={styles.sleepCard}>
+                <Text style={styles.sleepCount}>{count}</Text>
+                <Text style={styles.sleepLabel}>
+                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       <View style={{ height: 40 }} />
     </ScrollView>

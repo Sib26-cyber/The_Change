@@ -9,6 +9,10 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Keyboard,
 } from "react-native";
 import { getPin } from "../storage/securityStorage";
 
@@ -59,15 +63,15 @@ export default function UnlockScreen() {
       if (result.success) {
         setError("");
         router.replace("/tabs/home" as any);
-      } else {
-        setError("Authentication cancelled. Please enter your PIN.");
       }
+      // Don't show error on cancel - just let user use PIN
     } catch {
-      setError("Biometric authentication failed. Please enter your PIN.");
+      // Silent fail - user can still use PIN
     }
   };
 
   const handleUnlock = async () => {
+    Keyboard.dismiss(); // Dismiss keyboard before unlocking
     const storedPin = await getPin();
 
     // --- If no PIN exists, send user to Set PIN page ---
@@ -85,38 +89,48 @@ export default function UnlockScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Unlock The Change</Text>
-      <Text style={styles.subtitle}>
-        {isBiometricSupported && biometricType
-          ? `Use ${biometricType} or enter your PIN to access your diary.`
-          : "Enter your PIN to access your diary. Everything stays on this device."}
-      </Text>
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>Unlock The Change</Text>
+        <Text style={styles.subtitle}>
+          {isBiometricSupported && biometricType
+            ? `Use ${biometricType} or enter your PIN to access your diary.`
+            : "Enter your PIN to access your diary. Everything stays on this device."}
+        </Text>
 
-      {isBiometricSupported && biometricType && (
-        <TouchableOpacity
-          style={styles.biometricButton}
-          onPress={handleBiometricAuth}
-        >
-          <Text style={styles.biometricButtonText}>🔐 Use {biometricType}</Text>
+        {isBiometricSupported && biometricType && (
+          <TouchableOpacity
+            style={styles.biometricButton}
+            onPress={handleBiometricAuth}
+          >
+            <Text style={styles.biometricButtonText}>🔐 Use {biometricType}</Text>
+          </TouchableOpacity>
+        )}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Enter PIN"
+          keyboardType="number-pad"
+          secureTextEntry
+          value={enteredPin}
+          onChangeText={setEnteredPin}
+          returnKeyType="done"
+          onSubmitEditing={handleUnlock}
+        />
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity style={styles.button} onPress={handleUnlock}>
+          <Text style={styles.buttonText}>Unlock with PIN</Text>
         </TouchableOpacity>
-      )}
-
-      <TextInput
-        style={styles.input}
-        placeholder="Enter PIN"
-        keyboardType="number-pad"
-        secureTextEntry
-        value={enteredPin}
-        onChangeText={setEnteredPin}
-      />
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <TouchableOpacity style={styles.button} onPress={handleUnlock}>
-        <Text style={styles.buttonText}>Unlock with PIN</Text>
-      </TouchableOpacity>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

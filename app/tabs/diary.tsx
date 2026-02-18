@@ -70,6 +70,7 @@ export default function DiaryScreen() {
 
   const [mood, setMood] = useState<string>("");
   const [sleep, setSleep] = useState<"good" | "bad" | "restless">("good");
+  const [exercise, setExercise] = useState<"none" | "light" | "active">("none");
   const [bleeding, setBleeding] = useState<boolean>(false);
   const [waterIntake, setWaterIntake] = useState<number>(0);
 
@@ -114,6 +115,7 @@ export default function DiaryScreen() {
           date TEXT UNIQUE,
           mood TEXT,
           sleep TEXT,
+          exercise TEXT,
           bleeding INTEGER,
           waterIntake INTEGER DEFAULT 0,
           symptomsJSON TEXT,
@@ -126,6 +128,15 @@ export default function DiaryScreen() {
       try {
         await database.runAsync(
           `ALTER TABLE diary_entries ADD COLUMN waterIntake INTEGER DEFAULT 0;`,
+        );
+      } catch (e) {
+        // Column already exists, ignore error
+      }
+
+      // Add exercise column if it doesn't exist (migration for existing databases)
+      try {
+        await database.runAsync(
+          `ALTER TABLE diary_entries ADD COLUMN exercise TEXT DEFAULT 'sedentary';`,
         );
       } catch (e) {
         // Column already exists, ignore error
@@ -158,12 +169,13 @@ export default function DiaryScreen() {
     try {
       await db.runAsync(
         `INSERT OR REPLACE INTO diary_entries
-          (date, mood, sleep, bleeding, waterIntake, symptomsJSON, foodTriggersJSON, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+          (date, mood, sleep, exercise, bleeding, waterIntake, symptomsJSON, foodTriggersJSON, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           today,
           mood,
           sleep,
+          exercise,
           bleeding ? 1 : 0,
           waterIntake,
           JSON.stringify(symptoms),
@@ -177,6 +189,7 @@ export default function DiaryScreen() {
       // Clear all fields
       setMood("");
       setSleep("good");
+      setExercise("none");
       setBleeding(false);
       setWaterIntake(0);
       setSymptoms(
@@ -234,6 +247,11 @@ export default function DiaryScreen() {
       {/* Sleep */}
       <Card>
         <SleepPicker sleep={sleep} setSleep={setSleep} />
+      </Card>
+
+      {/* Exercise */}
+      <Card>
+        <ExercisePicker exercise={exercise} setExercise={setExercise} />
       </Card>
 
       {/* Bleeding */}
@@ -369,6 +387,39 @@ function SleepPicker({
               style={[
                 styles.pillText,
                 sleep === opt && styles.pillTextSelected,
+              ]}
+            >
+              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ExercisePicker({
+  exercise,
+  setExercise,
+}: {
+  exercise: "none" | "light" | "active";
+  setExercise: (v: "none" | "light" | "active") => void;
+}) {
+  const options: (typeof exercise)[] = ["none", "light", "active"];
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>🏃‍♀️ Exercise</Text>
+      <View style={styles.pillRow}>
+        {options.map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            style={[styles.pill, exercise === opt && styles.pillSelected]}
+            onPress={() => setExercise(opt)}
+          >
+            <Text
+              style={[
+                styles.pillText,
+                exercise === opt && styles.pillTextSelected,
               ]}
             >
               {opt.charAt(0).toUpperCase() + opt.slice(1)}

@@ -31,6 +31,12 @@ export default function Home() {
     },
     { icon: "📈", label: "Charts", route: "/tabs/charts", color: "#E67E96" },
     {
+      icon: "🕐",
+      label: "History",
+      route: "/tabs/history",
+      color: "#E8A87C",
+    },
+    {
       icon: "⚙️",
       label: "Settings",
       route: "/tabs/settings",
