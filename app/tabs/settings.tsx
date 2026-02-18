@@ -25,7 +25,7 @@ export default function SettingsScreen() {
             router.push("/set-pin");
           },
         },
-      ]
+      ],
     );
   };
 
@@ -44,7 +44,7 @@ export default function SettingsScreen() {
             router.replace("/set-pin");
           },
         },
-      ]
+      ],
     );
   };
 
@@ -76,7 +76,8 @@ export default function SettingsScreen() {
           {"\n\n"}
           Reset PIN changes your PIN but keeps your diary.
           {"\n\n"}
-          Clear local data permanently wipes your PIN and diary from this device.
+          Clear local data permanently wipes your PIN and diary from this
+          device.
         </Text>
       </View>
     </View>

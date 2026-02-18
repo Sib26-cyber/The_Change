@@ -1,14 +1,14 @@
 // app/unlock.tsx
-import { useRouter } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { getPin } from "../storage/securityStorage";
 
@@ -22,26 +22,27 @@ export default function UnlockScreen() {
   // Check if biometrics are available on device
   useEffect(() => {
     const checkBiometricSupport = async () => {
-    const compatible = await LocalAuthentication.hasHardwareAsync();
-    setIsBiometricSupported(compatible);
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      setIsBiometricSupported(compatible);
 
-    if (compatible) {
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (enrolled) {
-        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-        // 1 = Fingerprint, 2 = FaceID, 3 = Iris
-        if (types.includes(2)) {
-          setBiometricType("Face ID");
-        } else if (types.includes(1)) {
-          setBiometricType("Touch ID");
-        } else {
-          setBiometricType("Biometrics");
+      if (compatible) {
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        if (enrolled) {
+          const types =
+            await LocalAuthentication.supportedAuthenticationTypesAsync();
+          // 1 = Fingerprint, 2 = FaceID, 3 = Iris
+          if (types.includes(2)) {
+            setBiometricType("Face ID");
+          } else if (types.includes(1)) {
+            setBiometricType("Touch ID");
+          } else {
+            setBiometricType("Biometrics");
+          }
+          // Automatically trigger biometric auth when screen loads
+          handleBiometricAuth();
         }
-        // Automatically trigger biometric auth when screen loads
-        handleBiometricAuth();
       }
-    }
-  };
+    };
 
     checkBiometricSupport();
   }, []);
@@ -97,9 +98,7 @@ export default function UnlockScreen() {
           style={styles.biometricButton}
           onPress={handleBiometricAuth}
         >
-          <Text style={styles.biometricButtonText}>
-            🔐 Use {biometricType}
-          </Text>
+          <Text style={styles.biometricButtonText}>🔐 Use {biometricType}</Text>
         </TouchableOpacity>
       )}
 

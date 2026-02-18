@@ -2,11 +2,11 @@
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import { Calendar, DateObject } from "react-native-calendars";
 

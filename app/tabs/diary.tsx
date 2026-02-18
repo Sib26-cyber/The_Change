@@ -79,8 +79,8 @@ export default function DiaryScreen() {
         acc[key] = false;
         return acc;
       },
-      {} as Record<SymptomKey, boolean>
-    )
+      {} as Record<SymptomKey, boolean>,
+    ),
   );
 
   const [foodTriggers, setFoodTriggers] = useState<
@@ -91,8 +91,8 @@ export default function DiaryScreen() {
         acc[key] = false;
         return acc;
       },
-      {} as Record<FoodTriggerKey, boolean>
-    )
+      {} as Record<FoodTriggerKey, boolean>,
+    ),
   );
 
   const [notes, setNotes] = useState<string>("");
@@ -119,13 +119,13 @@ export default function DiaryScreen() {
           symptomsJSON TEXT,
           foodTriggersJSON TEXT,
           notes TEXT
-        );`
+        );`,
       );
 
       // Add waterIntake column if it doesn't exist (migration for existing databases)
       try {
         await database.runAsync(
-          `ALTER TABLE diary_entries ADD COLUMN waterIntake INTEGER DEFAULT 0;`
+          `ALTER TABLE diary_entries ADD COLUMN waterIntake INTEGER DEFAULT 0;`,
         );
       } catch (e) {
         // Column already exists, ignore error
@@ -133,13 +133,13 @@ export default function DiaryScreen() {
 
       const entry = await database.getFirstAsync<DiaryEntryStored>(
         `SELECT * FROM diary_entries WHERE date = ?;`,
-        [today]
+        [today],
       );
 
       if (entry) {
         Alert.alert(
           "Already saved",
-          "You've already filled out today's diary. You can overwrite it if you'd like."
+          "You've already filled out today's diary. You can overwrite it if you'd like.",
         );
       }
     })();
@@ -169,7 +169,7 @@ export default function DiaryScreen() {
           JSON.stringify(symptoms),
           JSON.stringify(foodTriggers),
           notes,
-        ]
+        ],
       );
 
       Alert.alert("✅ Saved", "Your diary entry has been saved.");
@@ -185,8 +185,8 @@ export default function DiaryScreen() {
             acc[key] = false;
             return acc;
           },
-          {} as Record<SymptomKey, boolean>
-        )
+          {} as Record<SymptomKey, boolean>,
+        ),
       );
       setFoodTriggers(
         foodTriggerKeys.reduce(
@@ -194,8 +194,8 @@ export default function DiaryScreen() {
             acc[key] = false;
             return acc;
           },
-          {} as Record<FoodTriggerKey, boolean>
-        )
+          {} as Record<FoodTriggerKey, boolean>,
+        ),
       );
       setNotes("");
 
@@ -217,7 +217,13 @@ export default function DiaryScreen() {
     >
       <Animatable.View animation="fadeInDown" duration={400}>
         <Text style={styles.pageTitle}>🌸 Daily Diary</Text>
-        <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+        <Text style={styles.dateText}>
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </Text>
       </Animatable.View>
 
       {/* Mood */}
@@ -235,11 +241,11 @@ export default function DiaryScreen() {
         <Text style={styles.sectionTitle}>🩸 Period</Text>
         <View style={styles.row}>
           <Text style={styles.label}>Bleeding today?</Text>
-          <Switch 
-            value={bleeding} 
+          <Switch
+            value={bleeding}
             onValueChange={setBleeding}
-            trackColor={{ false: '#E0E0E0', true: '#D6765A' }}
-            thumbColor={bleeding ? '#fff' : '#f4f3f4'}
+            trackColor={{ false: "#E0E0E0", true: "#D6765A" }}
+            thumbColor={bleeding ? "#fff" : "#f4f3f4"}
           />
         </View>
       </Card>
@@ -252,8 +258,8 @@ export default function DiaryScreen() {
             <Switch
               value={symptoms[key]}
               onValueChange={(v) => setSymptoms({ ...symptoms, [key]: v })}
-              trackColor={{ false: '#E0E0E0', true: '#D6765A' }}
-              thumbColor={symptoms[key] ? '#fff' : '#f4f3f4'}
+              trackColor={{ false: "#E0E0E0", true: "#D6765A" }}
+              thumbColor={symptoms[key] ? "#fff" : "#f4f3f4"}
             />
             <Text style={styles.checkboxLabel}>{prettySymptom(key)}</Text>
           </View>
@@ -266,7 +272,7 @@ export default function DiaryScreen() {
         <View style={styles.waterContainer}>
           <Text style={styles.label}>Water Intake</Text>
           <View style={styles.waterControls}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.waterButton}
               onPress={() => setWaterIntake(Math.max(0, waterIntake - 1))}
             >
@@ -275,10 +281,13 @@ export default function DiaryScreen() {
             <View style={styles.waterDisplay}>
               <Text style={styles.waterCount}>{waterIntake} glasses</Text>
               <Text style={styles.waterGlassesIcons}>
-                {Array.from({ length: Math.min(waterIntake, 8) }, () => '💧').join('')}
+                {Array.from(
+                  { length: Math.min(waterIntake, 8) },
+                  () => "💧",
+                ).join("")}
               </Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.waterButton}
               onPress={() => setWaterIntake(Math.min(20, waterIntake + 1))}
             >
@@ -298,8 +307,8 @@ export default function DiaryScreen() {
               onValueChange={(v) =>
                 setFoodTriggers({ ...foodTriggers, [key]: v })
               }
-              trackColor={{ false: '#E0E0E0', true: '#D6765A' }}
-              thumbColor={foodTriggers[key] ? '#fff' : '#f4f3f4'}
+              trackColor={{ false: "#E0E0E0", true: "#D6765A" }}
+              thumbColor={foodTriggers[key] ? "#fff" : "#f4f3f4"}
             />
             <Text style={styles.checkboxLabel}>{prettyTrigger(key)}</Text>
           </View>

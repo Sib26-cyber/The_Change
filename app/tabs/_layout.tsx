@@ -50,7 +50,7 @@ export default function TabLayout() {
         name="charts"
         options={{
           title: "Charts",
-          tabBarIcon: ({ color}) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="stats-chart-outline" size={24} color={color} />
           ),
         }}

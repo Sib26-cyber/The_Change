@@ -1,15 +1,41 @@
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from "react-native";
+import {
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 export default function Home() {
   const router = useRouter();
 
   const menuItems = [
-    { icon: "📝", label: "Daily Diary", route: "/tabs/diary", color: "#D6765A" },
-    { icon: "📊", label: "Analytics", route: "/tabs/analytics", color: "#9B59B6" },
-    { icon: "📅", label: "Insights", route: "/tabs/insights", color: "#4A90E2" },
+    {
+      icon: "📝",
+      label: "Daily Diary",
+      route: "/tabs/diary",
+      color: "#D6765A",
+    },
+    {
+      icon: "📊",
+      label: "Analytics",
+      route: "/tabs/analytics",
+      color: "#9B59B6",
+    },
+    {
+      icon: "📅",
+      label: "Insights",
+      route: "/tabs/insights",
+      color: "#4A90E2",
+    },
     { icon: "📈", label: "Charts", route: "/tabs/charts", color: "#E67E96" },
-    { icon: "⚙️", label: "Settings", route: "/tabs/settings", color: "#6C7A89" },
+    {
+      icon: "⚙️",
+      label: "Settings",
+      route: "/tabs/settings",
+      color: "#6C7A89",
+    },
   ];
 
   return (

@@ -3,16 +3,16 @@
 // Advanced analytics showing symptom trends, patterns, and insights
 // -------------------------------------------------------------
 
-import { parseISO, subDays, isWithinInterval } from "date-fns";
+import { isWithinInterval, parseISO, subDays } from "date-fns";
 import * as SQLite from "expo-sqlite";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 type DiaryEntry = {
@@ -90,7 +90,7 @@ export default function AnalyticsScreen() {
   const loadData = async () => {
     const db = await SQLite.openDatabaseAsync("thechange.db");
     const rows = await db.getAllAsync<DiaryEntry>(
-      "SELECT * FROM diary_entries ORDER BY date DESC"
+      "SELECT * FROM diary_entries ORDER BY date DESC",
     );
     setEntries(rows);
     setLoading(false);
@@ -107,7 +107,10 @@ export default function AnalyticsScreen() {
 
     return entries.filter((entry) => {
       const entryDate = parseISO(entry.date);
-      return isWithinInterval(entryDate, { start: ranges[timeRange], end: now });
+      return isWithinInterval(entryDate, {
+        start: ranges[timeRange],
+        end: now,
+      });
     });
   };
 
@@ -142,11 +145,11 @@ export default function AnalyticsScreen() {
   });
 
   const moodColors: Record<string, string> = {
-    sad: "#4A90E2",        // Blue for sad
-    neutral: "#9B59B6",    // Purple for neutral
-    calm: "#E67E96",       // Pink for calm
-    happy: "#D6456C",      // Deep pink for happy
-    joyful: "#C91F47",     // Red for joyful
+    sad: "#4A90E2", // Blue for sad
+    neutral: "#9B59B6", // Purple for neutral
+    calm: "#E67E96", // Pink for calm
+    happy: "#D6456C", // Deep pink for happy
+    joyful: "#C91F47", // Red for joyful
   };
 
   const maxMoodCount = Math.max(...Object.values(moodCounts), 1);
@@ -167,10 +170,7 @@ export default function AnalyticsScreen() {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
-  const maxSymptomCount = Math.max(
-    ...topSymptoms.map(([, count]) => count),
-    1
-  );
+  const maxSymptomCount = Math.max(...topSymptoms.map(([, count]) => count), 1);
 
   // Food trigger frequency
   const triggerCounts: Record<string, number> = {};
@@ -192,7 +192,7 @@ export default function AnalyticsScreen() {
 
   const totalTriggers = Object.values(triggerCounts).reduce(
     (sum, count) => sum + count,
-    0
+    0,
   );
 
   // Sleep quality stats
@@ -209,7 +209,10 @@ export default function AnalyticsScreen() {
       {/* Time Range Selector */}
       <View style={styles.timeRangeContainer}>
         <TouchableOpacity
-          style={[styles.timeButton, timeRange === "week" && styles.timeButtonActive]}
+          style={[
+            styles.timeButton,
+            timeRange === "week" && styles.timeButtonActive,
+          ]}
           onPress={() => setTimeRange("week")}
         >
           <Text
@@ -222,7 +225,10 @@ export default function AnalyticsScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.timeButton, timeRange === "month" && styles.timeButtonActive]}
+          style={[
+            styles.timeButton,
+            timeRange === "month" && styles.timeButtonActive,
+          ]}
           onPress={() => setTimeRange("month")}
         >
           <Text
@@ -235,7 +241,10 @@ export default function AnalyticsScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.timeButton, timeRange === "all" && styles.timeButtonActive]}
+          style={[
+            styles.timeButton,
+            timeRange === "all" && styles.timeButtonActive,
+          ]}
           onPress={() => setTimeRange("all")}
         >
           <Text
