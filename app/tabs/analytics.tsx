@@ -1,7 +1,9 @@
 // app/tabs/analytics.tsx
-// -------------------------------------------------------------
-// Advanced analytics showing symptom trends, patterns, and insights
-// -------------------------------------------------------------
+// This screen reads all diary entries from the SQLite database and
+// presents them as visual summaries so the user can spot patterns over time.
+// The user can filter by the last 7 days, last 30 days, or all recorded entries.
+// All data processing happens in JavaScript after loading from the database;
+// no additional queries are run when the time range changes.
 
 import { isWithinInterval, parseISO, subDays } from "date-fns";
 import * as SQLite from "expo-sqlite";
@@ -15,6 +17,9 @@ import {
     View,
 } from "react-native";
 
+// DiaryEntry represents the shape of a row returned from the SQLite query.
+// symptomsJSON and foodTriggersJSON are parsed into objects when the
+// analytics calculations are run.
 type DiaryEntry = {
   date: string;
   mood: string;
@@ -25,9 +30,12 @@ type DiaryEntry = {
   foodTriggersJSON: string;
 };
 
+// TimeRange controls how far back the analytics look.
 type TimeRange = "week" | "month" | "all";
 
-// Simple Bar component
+// SimpleBar renders a single labelled horizontal bar.
+// The bar width is expressed as a percentage of the maximum value in the dataset
+// so all bars in a chart share the same scale.
 const SimpleBar = ({
   label,
   value,
@@ -56,7 +64,9 @@ const SimpleBar = ({
   );
 };
 
-// Simple Pie Slice component
+// PieSlice shows a colour-coded legend row for the food trigger breakdown.
+// Rather than rendering an actual pie chart, each item displays its
+// percentage of the total so the information is still clear.
 const PieSlice = ({
   label,
   value,
@@ -88,6 +98,10 @@ export default function AnalyticsScreen() {
     loadData();
   }, []);
 
+  // Load all diary entries once when the screen mounts.
+  // Loading everything up front means filtering is done in memory,
+  // which avoids opening a new database connection each time the user
+  // switches the time range.
   const loadData = async () => {
     const db = await SQLite.openDatabaseAsync("thechange.db");
     const rows = await db.getAllAsync<DiaryEntry>(
@@ -97,7 +111,8 @@ export default function AnalyticsScreen() {
     setLoading(false);
   };
 
-  // Filter entries based on selected time range
+  // Returns the subset of entries that fall within the selected time range.
+  // date-fns is used here to keep the date comparison readable.
   const getFilteredEntries = () => {
     const now = new Date();
     const ranges = {
@@ -135,11 +150,8 @@ export default function AnalyticsScreen() {
     );
   }
 
-  // -------------------------------------------------------------
-  // Calculate Analytics
-  // -------------------------------------------------------------
-
-  // Mood distribution
+  // Count how many times each mood value was recorded.
+  // The result is used to drive the mood distribution bar chart.
   const moodCounts: Record<string, number> = {};
   filteredEntries.forEach((entry) => {
     moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
@@ -155,7 +167,9 @@ export default function AnalyticsScreen() {
 
   const maxMoodCount = Math.max(...Object.values(moodCounts), 1);
 
-  // Symptom frequency
+  // Count symptom occurrences by parsing the stored JSON for each entry.
+  // The camelCase keys are converted to readable labels using a regex
+  // that inserts a space before each uppercase letter.
   const symptomCounts: Record<string, number> = {};
   filteredEntries.forEach((entry) => {
     const symptoms = JSON.parse(entry.symptomsJSON);
@@ -167,13 +181,15 @@ export default function AnalyticsScreen() {
     });
   });
 
+  // Only the top five symptoms are shown to keep the chart readable.
   const topSymptoms = Object.entries(symptomCounts)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
   const maxSymptomCount = Math.max(...topSymptoms.map(([, count]) => count), 1);
 
-  // Food trigger frequency
+  // Count how many times each food trigger was logged.
+  // This helps the user see which dietary factors may be contributing to symptoms.
   const triggerCounts: Record<string, number> = {};
   filteredEntries.forEach((entry) => {
     const triggers = JSON.parse(entry.foodTriggersJSON);
@@ -196,13 +212,13 @@ export default function AnalyticsScreen() {
     0,
   );
 
-  // Sleep quality stats
+  // Tally sleep quality entries to show good, bad, and restless night counts.
   const sleepCounts: Record<string, number> = {};
   filteredEntries.forEach((entry) => {
     sleepCounts[entry.sleep] = (sleepCounts[entry.sleep] || 0) + 1;
   });
 
-  // Exercise stats
+  // Count exercise activity levels.
   const exerciseCounts: Record<string, number> = {};
   filteredEntries.forEach((entry) => {
     if (entry.exercise) {
@@ -210,7 +226,7 @@ export default function AnalyticsScreen() {
     }
   });
 
-  // Period tracking
+  // Count the number of days the user recorded bleeding within the time range.
   const periodDays = filteredEntries.filter((e) => e.bleeding === 1).length;
 
   return (

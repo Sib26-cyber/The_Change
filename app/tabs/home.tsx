@@ -1,3 +1,9 @@
+// app/tabs/home.tsx
+// This is the main dashboard screen the user lands on after unlocking the app.
+// It presents each section of the app as a tappable card in a grid layout.
+// Using a data-driven approach here (menuItems array) means adding or removing
+// a section only requires changing one object rather than duplicating JSX.
+
 import { useRouter } from "expo-router";
 import {
     ScrollView,
@@ -10,6 +16,8 @@ import {
 export default function Home() {
   const router = useRouter();
 
+  // Each item in menuItems defines a card on the home screen.
+  // The route string maps directly to expo-router file-based routes.
   const menuItems = [
     {
       icon: "📝",

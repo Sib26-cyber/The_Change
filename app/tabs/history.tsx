@@ -1,4 +1,12 @@
 // app/tabs/history.tsx
+// This screen displays all previously saved diary entries in a scrollable list
+// with the most recent entry at the top.
+// Each entry can be edited or deleted directly from the list.
+// The screen also provides a CSV export feature so the user can share
+// their data with a healthcare professional or keep a personal backup.
+// The export uses expo-sharing to present the system share sheet,
+// which lets the user send the file however they choose.
+
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { File, Paths } from "expo-file-system";
 import * as SQLite from "expo-sqlite";
@@ -95,7 +103,9 @@ export default function HistoryScreen() {
   );
   const [notes, setNotes] = useState<string>("");
 
-  // Initialize database and load entries
+  // Open the database and load entries when the screen first mounts.
+  // The CREATE TABLE statement runs every time but only creates the table
+  // if it does not already exist, so it is safe to include on every launch.
   useEffect(() => {
     (async () => {
       const database = await SQLite.openDatabaseAsync("thechange.db");
@@ -119,6 +129,8 @@ export default function HistoryScreen() {
     })();
   }, []);
 
+  // Fetches all entries ordered by date descending so the newest entry
+  // appears at the top of the list.
   const loadEntries = async (database: SQLite.SQLiteDatabase) => {
     const rows = await database.getAllAsync<DiaryEntryStored>(
       `SELECT * FROM diary_entries ORDER BY date DESC;`
@@ -126,6 +138,8 @@ export default function HistoryScreen() {
     setEntries(rows);
   };
 
+  // Populates the edit modal form with the values from the tapped entry
+  // so the user can see their existing data and change only what they need to.
   const openEditModal = (entry: DiaryEntryStored) => {
     setEditingEntry(entry);
     setMood(entry.mood || "");
@@ -168,6 +182,8 @@ export default function HistoryScreen() {
     setModalVisible(true);
   };
 
+  // Writes the updated form values back to the database row identified by
+  // the entry id, then refreshes the list so the change is immediately visible.
   const saveEdit = async () => {
     if (!db || !editingEntry) return;
 
@@ -199,6 +215,8 @@ export default function HistoryScreen() {
     }
   };
 
+  // Asks the user to confirm before permanently removing an entry.
+  // A confirmation step is required here because the action cannot be undone.
   const deleteEntry = async (id: number) => {
     if (!db) return;
 
@@ -227,6 +245,12 @@ export default function HistoryScreen() {
     );
   };
 
+  // Builds a CSV string from all diary entries and saves it as a file
+  // in the app's documents directory using the expo-file-system File API.
+  // It then calls expo-sharing to open the system share sheet so the user
+  // can send the file by email, AirDrop, or any other installed app.
+  // Notes are wrapped in quotes and internal quotes are escaped to ensure
+  // the CSV is valid when opened in spreadsheet software.
   const exportToCSV = async () => {
     if (!db) return;
 
@@ -298,6 +322,10 @@ export default function HistoryScreen() {
     }
   };
 
+  // Renders a single diary entry card in the FlatList.
+  // symptomsJSON and foodTriggersJSON are parsed here at render time
+  // rather than stored pre-parsed so that the raw data in the database
+  // stays as simple strings and is easier to export.
   const renderEntry = ({ item }: { item: DiaryEntryStored }) => {
     const symptomsObj = JSON.parse(item.symptomsJSON || "{}");
     const triggersObj = JSON.parse(item.foodTriggersJSON || "{}");
@@ -588,7 +616,8 @@ export default function HistoryScreen() {
   );
 }
 
-// Helper functions
+// These helper functions and the moodOptions array are defined outside the
+// component so they are only created once rather than on every render.
 const moodOptions = [
   { emoji: "😢", value: "sad" },
   { emoji: "😐", value: "neutral" },
@@ -621,7 +650,7 @@ function prettyTrigger(key: FoodTriggerKey): string {
   return mapping[key];
 }
 
-// Styles
+// Styles for the history screen, edit modal, and individual entry cards.
 const styles = StyleSheet.create({
   container: {
     flex: 1,

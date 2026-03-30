@@ -1,4 +1,13 @@
 // app/tabs/settings.tsx
+// This screen gives the user three data management options.
+// Logging out locks the app without touching any stored data.
+// Resetting the PIN routes the user through the PIN setup flow while
+// leaving diary entries untouched.
+// Clearing all data permanently removes everything from the device,
+// which is useful if the user wants to hand the phone to someone else
+// or start fresh. All three actions are separated deliberately so the
+// user cannot accidentally wipe their diary when they only meant to reset their PIN.
+
 import { useRouter } from "expo-router";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { clearAllData } from "../../storage/securityStorage";
@@ -6,12 +15,14 @@ import { clearAllData } from "../../storage/securityStorage";
 export default function SettingsScreen() {
   const router = useRouter();
 
-  // Just log out: go back to Unlock, keep PIN + diary data
+  // Navigate to the unlock screen, which locks the app.
+  // No data is deleted; the user simply needs to re-enter their PIN to get back in.
   const handleLogout = () => {
     router.replace("/unlock");
   };
 
-  //  Reset PIN only (keep diary data)
+  // Warn the user before redirecting to the PIN setup screen.
+  // Their diary data is preserved.
   const handleResetPin = () => {
     Alert.alert(
       "Reset PIN",
@@ -29,7 +40,9 @@ export default function SettingsScreen() {
     );
   };
 
-  //  Wipe everything: PIN + diary entries
+  // Confirm before wiping all data. This calls clearAllData which removes
+  // both the PIN from SecureStore and the diary entries from AsyncStorage.
+  // The user is then redirected to set a new PIN as if opening the app for the first time.
   const handleClearData = () => {
     Alert.alert(
       "Clear all data?",

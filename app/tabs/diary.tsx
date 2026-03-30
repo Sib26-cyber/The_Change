@@ -1,4 +1,11 @@
 // app/tabs/diary.tsx
+// This screen is the main daily logging interface for the user.
+// It allows the user to record their mood, sleep quality, exercise level,
+// symptoms, food triggers, water intake, and free-text notes for the current day.
+// Data is saved to a local SQLite database using expo-sqlite.
+// SQLite was chosen here (rather than AsyncStorage used elsewhere) because
+// it allows structured queries which are needed for the analytics screen.
+
 import { useRouter } from "expo-router";
 import * as SQLite from "expo-sqlite";
 import React, { useEffect, useState } from "react";
@@ -14,10 +21,9 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 
-// ----------------------
-// TYPES
-// ----------------------
-
+// SymptomKey lists the symptom categories tracked in the diary.
+// Using a union type here ensures only valid symptom names can be used
+// as keys throughout the component.
 type SymptomKey =
   | "hotFlushes"
   | "brainFog"
@@ -39,6 +45,7 @@ const symptomKeys: SymptomKey[] = [
   "heartburn",
 ];
 
+// FoodTriggerKey covers dietary items that are known to worsen menopause symptoms.
 type FoodTriggerKey = "spicy" | "alcohol" | "caffeine" | "sugar";
 const foodTriggerKeys: FoodTriggerKey[] = [
   "spicy",
@@ -47,6 +54,9 @@ const foodTriggerKeys: FoodTriggerKey[] = [
   "sugar",
 ];
 
+// DiaryEntryStored matches the column layout of the diary_entries table in SQLite.
+// symptomsJSON and foodTriggersJSON are stored as JSON strings because SQLite
+// does not have a native object or array type.
 interface DiaryEntryStored {
   id: number;
   date: string;
@@ -59,13 +69,12 @@ interface DiaryEntryStored {
   notes: string;
 }
 
-// ----------------------
-// MAIN COMPONENT
-// ----------------------
-
 export default function DiaryScreen() {
-  // DB must be inside the component
   const router = useRouter();
+
+  // db is stored in state because openDatabaseAsync is asynchronous.
+  // Keeping it in state ensures the component does not try to use it before
+  // the connection is ready.
   const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null);
 
   const [mood, setMood] = useState<string>("");
@@ -74,6 +83,9 @@ export default function DiaryScreen() {
   const [bleeding, setBleeding] = useState<boolean>(false);
   const [waterIntake, setWaterIntake] = useState<number>(0);
 
+  // Symptoms and food triggers are stored as records so each key maps to
+  // a boolean toggle. This structure makes it straightforward to serialise
+  // the entire object to JSON when saving to the database.
   const [symptoms, setSymptoms] = useState<Record<SymptomKey, boolean>>(
     symptomKeys.reduce(
       (acc, key) => {
@@ -98,12 +110,13 @@ export default function DiaryScreen() {
 
   const [notes, setNotes] = useState<string>("");
 
+  // today is used as the primary key for the diary entry so only one
+  // entry can exist per calendar day.
   const today = new Date().toISOString().split("T")[0];
 
-  // ----------------------
-  // OPEN DATABASE
-  // ----------------------
-
+  // Open the SQLite database and create the table when the component mounts.
+  // ALTER TABLE statements are used to add columns that were introduced
+  // after the initial release without wiping existing data.
   useEffect(() => {
     (async () => {
       const database = await SQLite.openDatabaseAsync("thechange.db");
@@ -124,24 +137,27 @@ export default function DiaryScreen() {
         );`,
       );
 
-      // Add waterIntake column if it doesn't exist (migration for existing databases)
+      // These ALTER TABLE calls add columns that did not exist in earlier
+      // versions of the app. The try/catch handles the case where the
+      // column already exists, which SQLite treats as an error.
       try {
         await database.runAsync(
           `ALTER TABLE diary_entries ADD COLUMN waterIntake INTEGER DEFAULT 0;`,
         );
       } catch (e) {
-        // Column already exists, ignore error
+        // waterIntake column already exists, nothing to do.
       }
 
-      // Add exercise column if it doesn't exist (migration for existing databases)
       try {
         await database.runAsync(
           `ALTER TABLE diary_entries ADD COLUMN exercise TEXT DEFAULT 'sedentary';`,
         );
       } catch (e) {
-        // Column already exists, ignore error
+        // exercise column already exists, nothing to do.
       }
 
+      // Check whether the user has already saved an entry for today.
+      // If they have, warn them before they overwrite it.
       const entry = await database.getFirstAsync<DiaryEntryStored>(
         `SELECT * FROM diary_entries WHERE date = ?;`,
         [today],
@@ -156,13 +172,12 @@ export default function DiaryScreen() {
     })();
   }, []);
 
-  // ----------------------
-  // SAVE ENTRY
-  // ----------------------
-
+  // Saves the current form state to the database for today's date.
+  // INSERT OR REPLACE is used so that if the user edits their entry
+  // on the same day, the existing row is overwritten rather than duplicated.
   const saveEntry = async () => {
     if (!db) {
-      Alert.alert("⏳ Please wait", "Database is still loading.");
+      Alert.alert("Please wait", "Database is still loading.");
       return;
     }
 
@@ -219,10 +234,7 @@ export default function DiaryScreen() {
     }
   };
 
-  // ----------------------
-  // RETURN UI
-  // ----------------------
-
+  // Render the diary form as a scrollable list of cards, one per category.
   return (
     <ScrollView
       contentContainerStyle={styles.scrollContainer}
@@ -357,14 +369,13 @@ export default function DiaryScreen() {
   );
 }
 
-// ----------------------
-// SUB-COMPONENTS
-// ----------------------
-
+// Card wraps each section of the form in a consistent styled container.
 function Card({ children }: { children: React.ReactNode }) {
   return <View style={styles.card}>{children}</View>;
 }
 
+// SleepPicker renders three pill buttons for the user to describe their
+// sleep quality as good, bad, or restless.
 function SleepPicker({
   sleep,
   setSleep,
@@ -398,6 +409,9 @@ function SleepPicker({
   );
 }
 
+// ExercisePicker lets the user log their activity level for the day.
+// The three options (none, light, active) were chosen to keep input simple
+// while still providing enough detail to spot patterns in the analytics.
 function ExercisePicker({
   exercise,
   setExercise,
@@ -439,6 +453,9 @@ const moodOptions = [
   { emoji: "😍", value: "joyful" },
 ];
 
+// MoodSelector displays five emoji-based mood options as tappable circles.
+// The animation on the selected item gives the user immediate visual feedback.
+// If the user selects a positive mood, an encouraging message is shown below.
 function MoodSelector({
   selectedMood,
   setSelectedMood,
@@ -487,10 +504,8 @@ function MoodSelector({
   );
 }
 
-// ----------------------
-// HELPERS
-// ----------------------
-
+// prettySymptom converts a camelCase symptom key into a readable label
+// for display in the UI, keeping the data model separate from the presentation.
 function prettySymptom(key: SymptomKey): string {
   const mapping: Record<SymptomKey, string> = {
     hotFlushes: "Hot Flushes",
@@ -505,6 +520,7 @@ function prettySymptom(key: SymptomKey): string {
   return mapping[key];
 }
 
+// prettyTrigger does the same for food trigger keys.
 function prettyTrigger(key: FoodTriggerKey): string {
   const mapping: Record<FoodTriggerKey, string> = {
     spicy: "Spicy Food",
@@ -515,10 +531,8 @@ function prettyTrigger(key: FoodTriggerKey): string {
   return mapping[key];
 }
 
-// ----------------------
-// STYLES
-// ----------------------
-
+// All styles for this screen are defined in a single StyleSheet object
+// to keep them co-located with the component and avoid global style conflicts.
 const styles = StyleSheet.create({
   scrollContainer: {
     padding: 16,

@@ -1,10 +1,9 @@
 // app/tabs/charts.tsx
-// -------------------------------------------------------------
-// This screen displays the user's mood over time using a line chart.
-// It loads mood entries from SQLite and converts mood words into
-// numeric values so they can be plotted. The chart updates automatically
-// as new diary entries are added.
-// -------------------------------------------------------------
+// This screen plots the user's mood over time as a line chart.
+// Mood values are stored in the database as text strings, so they are
+// mapped to integers before being passed to the chart library.
+// A higher number on the Y-axis represents a more positive mood.
+// The chart uses an area fill style to make trends easier to read at a glance.
 
 import { format, parseISO } from "date-fns";
 import * as SQLite from "expo-sqlite";
@@ -19,10 +18,9 @@ import {
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 
-// -------------------------------------------------------------
-// Mapping mood labels to numbers for the Y-axis.
-// Higher numbers represent more positive moods.
-// -------------------------------------------------------------
+// Maps mood text values to numeric Y-axis positions.
+// The scale runs from 1 (sad) to 5 (joyful) so the chart has a consistent
+// range regardless of which moods the user has recorded.
 const moodToValue: Record<string, number> = {
   sad: 1,
   neutral: 2,
@@ -31,39 +29,31 @@ const moodToValue: Record<string, number> = {
   joyful: 5,
 };
 
-// Reverse lookup used for tooltips or debugging (optional)
+// Used as Y-axis labels so the chart shows mood names instead of numbers.
 const valueToMood = ["", "Sad", "Neutral", "Calm", "Happy", "Joyful"];
 
 export default function ChartsScreen() {
-  // Stores the data in the form the chart needs
   const [chartData, setChartData] = useState<
     { label: string; value: number }[]
   >([]);
 
-  // Simple loading state while fetching SQLite data
   const [loading, setLoading] = useState(true);
 
-  // -------------------------------------------------------------
-  // Loads all mood entries from SQLite on component mount.
-  // Converts each diary entry into a date label + numeric mood.
-  // -------------------------------------------------------------
+  // Load mood data from SQLite on mount, convert it to chart input format,
+  // and store it in state. The component re-renders once loading is complete.
   useEffect(() => {
     const loadData = async () => {
-      // Open or create the on-device SQLite database
       const db = await SQLite.openDatabaseAsync("thechange.db");
 
-      // Retrieve all diary entries, sorted by date ascending
       const rows = await db.getAllAsync<{
         date: string;
         mood: string;
       }>("SELECT date, mood FROM diary_entries ORDER BY date ASC");
 
-      // Convert raw DB data into chart input format
       const data = rows.map((entry) => ({
-        // Format: "Feb 6", "Feb 7", etc.
+        // Format the date as a short readable label for the X-axis.
         label: format(parseISO(entry.date), "MMM d"),
-
-        // Convert mood word → numeric value
+        // Fall back to neutral if a mood value is not recognised.
         value: moodToValue[entry.mood] ?? moodToValue["neutral"],
       }));
 
@@ -74,9 +64,6 @@ export default function ChartsScreen() {
     loadData();
   }, []);
 
-  // -------------------------------------------------------------
-  // Display a spinner while data loads
-  // -------------------------------------------------------------
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -85,26 +72,21 @@ export default function ChartsScreen() {
     );
   }
 
-  // -------------------------------------------------------------
-  // Handle case where no data exists yet
-  // -------------------------------------------------------------
   if (chartData.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.noDataText}>No mood data available yet 💗</Text>
+        <Text style={styles.noDataText}>No mood data available yet.</Text>
       </View>
     );
   }
 
-  // Cap chart width so tablets do not stretch it too far
+  // Cap the chart width to the device screen width minus padding
+  // so it scales correctly on different phone sizes.
   const chartWidth = Math.min(Dimensions.get("window").width - 32, 500);
 
-  // -------------------------------------------------------------
-  // MAIN RENDER: Mood chart wrapped in a ScrollView
-  // -------------------------------------------------------------
   return (
     <ScrollView contentContainerStyle={styles.container} bounces={false}>
-      <Text style={styles.title}>📈 Mood Over Time</Text>
+      <Text style={styles.title}>Mood Over Time</Text>
 
       <View style={{ marginTop: 24 }}>
         <LineChart
@@ -137,12 +119,9 @@ export default function ChartsScreen() {
   );
 }
 
-// -------------------------------------------------------------
-// Stylesheet
-// -------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#fdf6f9", // soft feminine background
+    backgroundColor: "#fdf6f9",
   },
   title: {
     marginTop: 30,
@@ -151,7 +130,6 @@ const styles = StyleSheet.create({
     color: "#5C4B51",
     textAlign: "center",
   },
-
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

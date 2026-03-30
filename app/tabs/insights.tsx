@@ -1,4 +1,11 @@
 // app/tabs/insights.tsx
+// This screen shows a monthly calendar with diary entries marked on it.
+// Days that had bleeding recorded are marked with a red dot; all other logged
+// days are marked with a pink dot. Tapping a date shows a summary of that
+// day's entry, or offers to create a new entry if none exists.
+// The screen also calculates and displays how many days have passed since
+// the user's most recently recorded period day.
+
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -92,6 +99,9 @@ export default function InsightsScreen() {
   );
   const [notes, setNotes] = useState<string>("");
 
+  // Load all entries when the screen mounts and build two data structures:
+  // a map from date string to entry object for quick lookup when a day is tapped,
+  // and a markedDates object that the Calendar component uses to style each date.
   useEffect(() => {
     (async () => {
       const database = await SQLite.openDatabaseAsync("thechange.db");
@@ -110,7 +120,8 @@ export default function InsightsScreen() {
 
       result.forEach((e) => {
         map[e.date] = e;
-        // If bleeding day, show red circle, otherwise pink dot
+        // Bleeding days get a distinct red marker so the user can
+        // see their cycle at a glance on the calendar.
         if (e.bleeding === 1) {
           marks[e.date] = {
             selected: true,
@@ -178,6 +189,9 @@ export default function InsightsScreen() {
     );
   }
 
+  // When a calendar day is tapped, store it as the selected date.
+  // If no entry exists for that date, prompt the user to create one.
+  // This allows back-filling entries for days the user forgot to log.
   const onDayPress = (day: DateObject) => {
     setSelectedDate(day.dateString);
 
@@ -224,6 +238,9 @@ export default function InsightsScreen() {
     }
   };
 
+  // Saves a new diary entry for the selected calendar date.
+  // This uses a plain INSERT rather than INSERT OR REPLACE because
+  // this code path is only reached when no entry exists for that date.
   const saveNewEntry = async () => {
     if (!db || !selectedDate) return;
 
@@ -257,7 +274,10 @@ export default function InsightsScreen() {
   const entry = entries[selectedDate] ?? null;
   const today = new Date().toISOString().split("T")[0];
 
-  // Calculate days since last period
+  // Calculates how many days have passed since the most recent bleeding day
+  // by filtering all entries, sorting them by date, and subtracting from today.
+  // Returns null if no period days have been recorded yet so the card
+  // can be hidden rather than showing a misleading zero.
   const getDaysSinceLastPeriod = () => {
     const periodDates = Object.entries(entries)
       .filter(([_, entry]) => entry.bleeding === 1)
