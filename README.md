@@ -1,7 +1,7 @@
 # The Change (Prototype)
 
 This is a React Native + Expo project developed as part of my final-year work.
-The app provides a private personal diary and symptom tracking tool designed for 
+The app provides a private personal diary and symptom tracking tool designed for
 women experiencing perimenopausal symptoms.
 
 ## Install & Test (iOS)
@@ -20,9 +20,11 @@ npm install
 npx expo login
 $env:REACT_NATIVE_PACKAGER_HOSTNAME="<your-wifi-ip>" ; npx expo start --port 8081
 ```
+
 Scan the QR code with the Expo Go app or open `exp://<your-wifi-ip>:8081` in Safari on your device.
 
 ## Features in this prototype:
+
 - Onboarding (Welcome → Set PIN)
 - Local-only PIN validation (no cloud storage)
 - Tab navigation (Home, Diary, Insights)

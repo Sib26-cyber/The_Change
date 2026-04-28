@@ -84,7 +84,7 @@ export default function SummaryScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Today's Summary</Text>
 
-        {/* 🔹 Mood & Sleep */}
+        {/* Mood & Sleep */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Mood & Sleep</Text>
           <Text style={styles.cardText}>Mood: {entry.mood || "N/A"}</Text>
@@ -96,7 +96,7 @@ export default function SummaryScreen() {
           )}
         </View>
 
-        {/* 🔹 Symptoms overview */}
+        {/*  Symptoms overview */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Symptoms</Text>
           {Object.entries(symptoms)
@@ -111,7 +111,7 @@ export default function SummaryScreen() {
           )}
         </View>
 
-        {/* 🔹 Food triggers */}
+        {/*  Food triggers */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Food & Drink Triggers</Text>
           {Object.entries(food)
@@ -126,7 +126,7 @@ export default function SummaryScreen() {
           )}
         </View>
 
-        {/* 🔹 Notes */}
+        {/*  Notes */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Notes</Text>
           <Text style={styles.cardText}>
