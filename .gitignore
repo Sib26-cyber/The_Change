@@ -38,6 +38,12 @@ yarn-error.*
 
 app-example
 
+# User test browser cache files
+user_test_results/images/usage_files/
+
+# IDE
+.idea/
+
 # generated native folders
 /ios
 /android
