@@ -10,18 +10,18 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Calendar, DateObject } from "react-native-calendars";
+import { Calendar, DateData } from "react-native-calendars";
 
 type SymptomKey =
   | "hotFlushes"
@@ -192,7 +192,7 @@ export default function InsightsScreen() {
   // When a calendar day is tapped, store it as the selected date.
   // If no entry exists for that date, prompt the user to create one.
   // This allows back-filling entries for days the user forgot to log.
-  const onDayPress = (day: DateObject) => {
+  const onDayPress = (day: DateData) => {
     setSelectedDate(day.dateString);
 
     // If no entry exists for this date, offer to create one
